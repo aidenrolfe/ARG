@@ -20,6 +20,8 @@ from matplotlib import pyplot as plt
 # are all the above needed?
 
 
+# default configuration in the event of missing data - is this needed?
+
 class Config(object):
     '''
         Tracks all the flags used by Artificial Redshift.
@@ -39,6 +41,9 @@ class Config(object):
     evo_alpha = -0.13
     output_size = 128
 
+    
+# defining an 'observation' frame (for inital and target redshift, with the following parameters...)
+    
 class ObservationFrame(object):
     '''
         Class that represents one observation frame with a given
@@ -48,9 +53,10 @@ class ObservationFrame(object):
     def __init__(self, redshift, pixelscale, exptime):
         self.pixelscale = pixelscale
         self.redshift = redshift
-        self.exptime = exptime
+        self.exptime = exptime      
 
-# is exposure time needed?
+        
+# artificial redshifting (broken into separate stages)
         
 class ArtificialRedshift(object):
     '''
@@ -110,7 +116,12 @@ class ArtificialRedshift(object):
             #self.masked[segmentation == True] = 0
             #self.cutout[segmentation == False] = 0
             #self.final = self.cutout.copy()
+            
+            # if cutout_source is not performed then...
+            self.final = self.image
 
+    # changes to size: (uses luminosity_distance, but should angular_diameter_distance be used instead?)
+            
     def geometric_rebinning(self):
 
         def _size_correction(redshift):
@@ -125,14 +136,14 @@ class ArtificialRedshift(object):
         if self.config.rebinning:           
             initial_distance = self.cosmo.luminosity_distance(self.initial_frame.redshift).value   
             target_distance = self.cosmo.luminosity_distance(self.target_frame.redshift).value   
-            self.scale_factor = (initial_distance * (1 + self.target_frame.redshift)**2 * self.initial_frame.pixelscale) / (target_distance * (1 + self.initial_frame.redshift)**2 * self.target_frame.pixelscale)
+            self.scale_factor = (initial_distance * (1 + self.target_frame.redshift)**2 * self.initial_frame.pixelscale) / (target_distance * (1 + self.initial_frame.redshift)**2 * self.target_frame.pixelscale)      # FERENGI - eq.1
             
             if self.config.size_correction:
                 self.size_correction_factor = _size_correction(self.target_frame.redshift)
 
             self.rebinned = zoom(self.rebinned, self.scale_factor * self.size_correction_factor, order=0, prefilter=True)
-            self.rebinned /= self.rebinned.sum()
-            self.rebinned *= self.flux
+            self.rebinned /= self.rebinned.sum()        # this divides rebinned by rebinned.sum() and IMMEDIATELY applies it to rebinned again. i.e b /= a is also b = b/a
+            self.rebinned *= self.flux      # alike to the above line
             
             self.final = self.rebinned.copy()
         else:
@@ -142,14 +153,15 @@ class ArtificialRedshift(object):
                 self.rebinned = zoom(self.final, self.size_correction_factor, prefilter=True) 
                 self.final = self.rebinned.copy()
 
+    # changes to brightness:           
+            
     def apply_dimming(self):
 
         if self.config.dimming:
-            self.dimming_factor = (self.cosmo.luminosity_distance(self.initial_frame.redshift) / self.cosmo.luminosity_distance(self.target_frame.redshift))**2
+            self.dimming_factor = (self.cosmo.luminosity_distance(self.initial_frame.redshift) / self.cosmo.luminosity_distance(self.target_frame.redshift))**2     # FERENGI - eq.2
             self.dimming_factor = self.dimming_factor.value
             self.dimmed = self.final * self.dimming_factor
             self.final = self.dimmed.copy()
-
 
     #def flat_evolution_correction(self):
         
@@ -166,7 +178,7 @@ class ArtificialRedshift(object):
             #self.with_evolution = self.final * self.evo_factor
             #self.final = self.with_evolution.copy()
 
-    # convoling with a psf: 
+    # convolving with a psf: 
     
     def convolve_psf(self):
         
