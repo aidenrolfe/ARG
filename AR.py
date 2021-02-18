@@ -146,7 +146,7 @@ class ArtificialRedshift(object):
     def apply_shot_noise(self):         
         
         if self.config.shot_noise:
-            self.shot_noise = np.sqrt(abs(self.convolved * self.target_frame.exptime)) * np.random.randn(self.convolved.shape[0], self.convolved.shape[1]) / self.target_frame.exptime         
+            self.shot_noise = np.sqrt(abs(self.convolved * self.target_frame.exptime)) * np.random.poisson(lam=self.target_frame.exptime, size=self.convolved.shape) / self.target_frame.exptime         
             self.with_shot_noise = self.final + self.shot_noise
             self.final = self.with_shot_noise.copy()
 
@@ -198,6 +198,9 @@ class ArtificialRedshift(object):
             self.with_background[offset_min:offset_max, offset_min:offset_max] += self.with_shot_noise
             self.final = self.with_background.copy()
 
+            
+    # writing data output for use in VAE:        
+            
     def writeto(self, filepath, data, overwrite=False):
 
         hdr = fits.Header()
