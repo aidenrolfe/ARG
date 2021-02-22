@@ -72,8 +72,6 @@ class ArtificialRedshift(object):
         if config is None:
             self.config = Config()
 
-        #self.cosmo = self.config.cosmo
-
         self.geometric_rebinning() 
         self.apply_dimming()
         self.convolve_psf()
@@ -116,18 +114,20 @@ class ArtificialRedshift(object):
             
     def geometric_rebinning(self):
         
-        self.flux = self.final.sum()
-        self.rebinned = self.final / self.flux
+        if self.config.rebinning:
+           
+            self.flux = self.final.sum()
+            self.rebinned = self.final / self.flux
 
-        initial_distance = self.cosmo.luminosity_distance(self.initial_frame.redshift).value   
-        target_distance = self.cosmo.luminosity_distance(self.target_frame.redshift).value   
-        self.scale_factor = (initial_distance * (1 + self.target_frame.redshift)**2) / (target_distance * (1 + self.initial_frame.redshift)**2)      # FERENGI - eq.1
+            initial_distance = self.cosmo.luminosity_distance(self.initial_frame.redshift).value   
+            target_distance = self.cosmo.luminosity_distance(self.target_frame.redshift).value   
+            self.scale_factor = (initial_distance * (1 + self.target_frame.redshift)**2) / (target_distance * (1 + self.initial_frame.redshift)**2)      # FERENGI - eq.1
             
-        self.rebinned = zoom(self.rebinned, self.scale_factor, order=0, prefilter=True)
-        self.rebinned /= self.rebinned.sum()        # this divides rebinned by rebinned.sum() and IMMEDIATELY applies it to rebinned again. i.e b /= a is also b = b/a
-        self.rebinned *= self.flux      # alike to the above line
+            self.rebinned = zoom(self.rebinned, self.scale_factor, order=0, prefilter=True)
+            self.rebinned /= self.rebinned.sum()        # this divides rebinned by rebinned.sum() and IMMEDIATELY applies it to rebinned again. i.e b /= a is also b = b/a
+            self.rebinned *= self.flux      # alike to the above line
             
-        self.final = self.rebinned.copy()
+            self.final = self.rebinned.copy()
        
     
     # changes to brightness:           
@@ -155,45 +155,10 @@ class ArtificialRedshift(object):
     
     def add_background(self):
 
-        def _find_bg_section(bg, img):
-    
-            a, b = bg.shape
-            c, d = img.shape
-
-            if((c <= a) & (d <= b)):
-                x = np.random.randint(0, a-c)
-                y = np.random.randint(0, b-d)
-            else:
-                raise(IndexError('Galaxy Image larger than BG'))
-            
-            bg_section = bg[x:(x+c), y:(y+d)]
-
-            return bg_section
-
         if self.config.add_background:
-            if self.background is None:
-                background_shape = self.image.shape
-                if self.scale_factor > 1:
-                    background_shape = self.final.shape
-                
-                mean, median, std = measure_background(self.image, 2, np.zeros((background_shape)))
-                self.background = np.random.normal(0, std, size=background_shape)
-            else:
-                self.background = _find_bg_section(self.background, self.image) if self.scale_factor <= 1 else _find_bg_section(self.background, self.final)
-
-            source_shape = self.final.shape
-            
-            if self.scale_factor == 1:
-                offset_min = 0
-                offset_max = self.image.shape[0]
-            else:
-                offset = 1
-                if source_shape[0] % 2 == 0:
-                    offset = 0
-
-                offset_min = int(self.background.shape[0]/2) - int(np.floor(source_shape[0]/2)) 
-                offset_max = int(self.background.shape[0]/2) + int(np.floor(source_shape[0]/2)) + offset
-
+           
+            # edit this
+        
             self.with_background = self.background.copy()
             self.with_background[offset_min:offset_max, offset_min:offset_max] += self.with_shot_noise
             self.final = self.with_background.copy()
