@@ -5,7 +5,6 @@ from tensorflow.keras import layers
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-
 # Creates noisy digits
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
@@ -21,7 +20,6 @@ x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))
 n_x = x_train.shape[0]
 n_y = y_train.shape[0]
 
-
 # create a sampling layer
 
 class Sampling(layers.Layer):
@@ -32,8 +30,7 @@ class Sampling(layers.Layer):
         batch = tf.shape(z_mean)[0]
         dim = tf.shape(z_mean)[1]
         epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
-    
+        return z_mean + tf.exp(0.5 * z_log_var) * epsilon  
     
 # build the encoder
 
