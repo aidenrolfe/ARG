@@ -8,9 +8,6 @@ import pandas as pd
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
-#x_train = x_train[y_train == 5]
-#x_test = x_test[y_test == 5]
-
 x_train = x_train.astype('float32') / 255.
 x_test = x_test.astype('float32') / 255.
 x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))
@@ -18,7 +15,6 @@ x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))
 
 n_x = x_train.shape[1]
 n_y = y_train.shape[1]
-
 
 # create a sampling layer
 
@@ -37,10 +33,10 @@ class Sampling(layers.Layer):
 
 latent_dim = 3
 
-X = keras.Input(batch_shape=(batch, n_x))
-cond = keras.Input(batch_shape=(batch, n_y))
+X = keras.Input(batch_shape=(layers.batch, n_x))
+cond = keras.Input(batch_shape=(layers.batch, n_y))
 encoder_inputs = pd.merge([X, cond], mode='concat', concat_axis=1)
-#encoder_inputs = keras.Input(shape=(28, 28, 1))
+
 x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
