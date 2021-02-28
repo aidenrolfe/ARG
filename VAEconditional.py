@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import pandas as pd
 
-# Creates noisy digits
-
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
 #x_train = x_train[y_train == 5]
