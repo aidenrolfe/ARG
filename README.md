@@ -1,23 +1,49 @@
 # ARG
 Artificially Redshifting Galaxies with neural networks - Year 4 project
 
-# Instructions for *devAiden*:
+## Instructions for *devAiden*:
 
 Installation of forked version of `SMPY` --> https://github.com/bamford/smpy
 
-Create a new conda environment with:
+
+### Create a new conda environment with:
 - Numpy
 - SciPy
 - Astropy
 - H5PY
 - Six
 
-Clone and install SMPY
+
+### Clone and install SMPY
 
 `git clone git://github.com/bamford/smpy.git`
 
 `python setup.py install`
 
-Run `plotting.py` from the `scripts` folder.
+### Run the scripts
 
-**This branch is currently just testing the outputs of `candels_example.py` produced by `SMPY`**
+Run `candels_example.py` from the `scripts` folder of SMPY to generate the needed HDF files
+
+Run `plotting.py` from the `scripts` folder to generate `n` simulated galaxies.
+
+### Note
+
+The output will be a `.npy` file for both the input and target galaxies.
+
+I would recommend reading the files in the following way:
+
+```
+with open('inputgalaxies.npy','rb') as f:
+
+  gal_input = np.load(f)
+  
+  z_in_idx = np.load(f)
+```
+
+```
+with open('targetgalaxies.npy','rb') as g:
+
+  gal_target = np.load(g)
+  
+  z_out_idx = np.load(g)
+```  
