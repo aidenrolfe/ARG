@@ -37,7 +37,7 @@ with open('inputgalaxies.npy','rb') as f:
 
   gal_input = np.load(f)
   
-  z_in_idx = np.load(f)
+  z_in = np.load(f)
 ```
 
 ```
@@ -45,5 +45,5 @@ with open('targetgalaxies.npy','rb') as g:
 
   gal_target = np.load(g)
   
-  z_out_idx = np.load(g)
+  z_out = np.load(g)
 ```  
