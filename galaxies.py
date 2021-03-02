@@ -29,8 +29,8 @@ gal_seds = flux0[:,:,sed_idx]
 z_in_idx = [1,2,3,4] # redshift index for input galaxies
 z_out_idx = [5,6,7,8] # redshift index for output galaxies
 
-gal_seds_in = gal_seds[z_in_idx]*10e9
-gal_seds_out = gal_seds[z_out_idx]*10e9
+gal_seds_in = gal_seds[z_in_idx]*1e9
+gal_seds_out = gal_seds[z_out_idx]*1e9
 
 ## generate sersic galaxies
 
