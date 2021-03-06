@@ -22,13 +22,15 @@ Installation of forked version of `SMPY` --> https://github.com/bamford/smpy
 
 ### Run the scripts
 
-Run `candels_example.py` from the `scripts` folder of SMPY to generate the needed HDF files
+Run `candels_example.py` from the `scripts` folder of SMPY to generate the needed HDF files.
 
 Run `galaxies.py` from the `scripts` folder to generate `n` simulated galaxies.
 
 ### Note
 
 The output will be a `.npy` file for both the input and target galaxies.
+
+`testplot.py` can be used to read the numpy arrays and test outputs.
 
 I would recommend reading the files in the following way:
 
