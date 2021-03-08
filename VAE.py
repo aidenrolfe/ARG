@@ -11,6 +11,8 @@ from datetime import datetime
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
+labels = y_test
+
 #x_train = x_train[y_train == 5]
 #x_test = x_test[y_test == 5]
 
@@ -119,12 +121,19 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 
 # train the VAE
 
+# This callback will stop the training when there is no improvement in
+# the validation loss for three consecutive epochs
+callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=3)
+
+epochs = 10
+batch_size = 128
+
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
 vae.fit([x_train_noisy, y_train], x_train,
-        epochs=10,
-        batch_size=128,
+        epochs=epochs,
+        batch_size=batch_size,
         shuffle=True,
         validation_data=([x_test_noisy, y_test], x_test),
         callbacks=[tensorboard_callback])
@@ -144,3 +153,12 @@ for i, ax in enumerate(axarr[2]):
 for ax in axarr.flat:
     ax.axis('off')
 plt.savefig('examples.pdf')
+
+# display a 2D plot of the digit classes in the latent space
+
+x_test_encoded = encoder.predict([x_test_noisy, y_test])
+plt.scatter(x_test_encoded[0], x_test_encoded[1], c=labels)
+plt.colorbar()
+plt.xlabel('z_0')
+plt.ylabel('z_1')
+plt.show()
