@@ -144,12 +144,3 @@ for i, ax in enumerate(axarr[2]):
 for ax in axarr.flat:
     ax.axis('off')
 plt.savefig('examples.pdf')
-
-# display a 2D plot of the digit classes in the latent space
-
-z_test = encoder.predict(x_test, batch_size=128)
-plt.figure(figsize=(6, 6))
-plt.scatter(z_test[:, 0], z_test[:, 1], c=y_test,
-            alpha=.4, s=3**2, cmap='viridis')
-plt.colorbar()
-plt.show()
