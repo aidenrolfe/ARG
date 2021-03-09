@@ -123,7 +123,7 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 
 # This callback will stop the training when there is no improvement in
 # the validation loss for three consecutive epochs
-early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=3)
+early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
 
 epochs = 100
 batch_size = 128
@@ -131,12 +131,22 @@ batch_size = 128
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
-vae.fit([x_train_noisy, y_train], x_train,
-        epochs=epochs,
-        batch_size=batch_size,
-        shuffle=True,
-        validation_data=([x_test_noisy, y_test], x_test),
-        callbacks=[tensorboard_callback, early_stopping_callback])
+history = vae.fit([x_train_noisy, y_train], x_train,
+                  epochs=epochs,
+                  batch_size=batch_size,
+                  shuffle=True,
+                  validation_data=([x_test_noisy, y_test], x_test),
+                  callbacks=[tensorboard_callback, early_stopping_callback])
+
+# summarize history for loss
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model Loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('model_loss.pdf')
 
 # show what the original, noisy and reconstructed digits look like
 
@@ -161,6 +171,7 @@ fig, axarr = plt.subplots(figsize=(6, 6))
 plt.scatter(z[:, 0], z[:, 1], c=labels, marker='.')
 plt.axis('square')
 plt.colorbar()
+plt.title('2D Plot of Digit Classes in Latent Space')
 plt.xlabel('z_0')
 plt.ylabel('z_1')
 plt.savefig('latent_scatter.pdf')
