@@ -47,13 +47,14 @@ def rebinning(image, input_redshift, output_redshift):
 def add_shot_noise(image, output_exptime):         
     
   # shot_noise = np.sqrt(convolved * output_exptime) * np.random.poisson()
+  # shot_noise = np.random.normal(mean, std, image.shape)
   with_shot_noise = image + shot_noise
   return with_shot_noise
 
 # adding background noise (from numerous sources - i.e. the sky, electrons in detector which are appearing randomly from thermal noise): 
 def add_background(image):
 
-  # code to generate background noise, background = ...
+  # background = np.random.normal(mean, peak, image.shape)
   with_background = image + background
   return with_background
 
