@@ -157,8 +157,10 @@ plt.savefig('examples.pdf')
 # display a 2D plot of the digit classes in the latent space
 
 z_mean, z_log_var, z = encoder.predict([x_test_noisy, y_test])
-plt.scatter(z[:, 0], z[:, 1], c=labels)
+fig, axarr = plt.subplots(figsize=(6, 6))
+plt.scatter(z[:, 0], z[:, 1], c=labels, marker='.')
+plt.axis('square')
 plt.colorbar()
 plt.xlabel('z_0')
 plt.ylabel('z_1')
-plt.show()
+plt.savefig('latent_scatter.pdf')
