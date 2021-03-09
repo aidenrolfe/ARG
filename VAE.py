@@ -145,7 +145,7 @@ plt.plot(history.history['val_loss'])
 plt.title('Model Loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'test'], loc='upper right')
 plt.savefig('model_loss.pdf')
 
 # show what the original, noisy and reconstructed digits look like
