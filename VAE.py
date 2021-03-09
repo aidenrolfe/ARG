@@ -156,8 +156,8 @@ plt.savefig('examples.pdf')
 
 # display a 2D plot of the digit classes in the latent space
 
-x_test_encoded = encoder.predict([x_test_noisy, y_test])
-plt.scatter(x_test_encoded[0], x_test_encoded[1], c=labels)
+z_mean, z_log_var, z = encoder.predict([x_test_noisy, y_test])
+plt.scatter(z[:, 0], z[:, 1], c=labels)
 plt.colorbar()
 plt.xlabel('z_0')
 plt.ylabel('z_1')
