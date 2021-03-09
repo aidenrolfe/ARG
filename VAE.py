@@ -123,9 +123,9 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 
 # This callback will stop the training when there is no improvement in
 # the validation loss for three consecutive epochs
-callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=3)
+early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=3)
 
-epochs = 10
+epochs = 100
 batch_size = 128
 
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -136,7 +136,7 @@ vae.fit([x_train_noisy, y_train], x_train,
         batch_size=batch_size,
         shuffle=True,
         validation_data=([x_test_noisy, y_test], x_test),
-        callbacks=[tensorboard_callback])
+        callbacks=[tensorboard_callback, early_stopping_callback])
 
 # show what the original, noisy and reconstructed digits look like
 
