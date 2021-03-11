@@ -11,9 +11,20 @@ from datetime import datetime
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
-labels = y_test
+#labels = y_test
 
 conditional = input('Conditional? [yes or no] ')
+digit = int(input('What digit? '))
+
+# create digit filter
+train_filter = np.where((y_train == digit))
+test_filter = np.where((y_test == digit))
+
+# apply filter to MNIST data set
+x_train, y_train = x_train[train_filter], y_train[train_filter]
+x_test, y_test = x_test[test_filter], y_test[test_filter]
+
+labels = y_test
 
 #x_train = x_train[y_train == 5]
 #x_test = x_test[y_test == 5]
@@ -58,7 +69,7 @@ class Sampling(layers.Layer):
     
 # build the encoder
 
-latent_dim = 5
+latent_dim = 2
 
 encoder_inputs = keras.Input(shape=(28, 28, 1))
 # We need another input for the labels.
@@ -121,7 +132,7 @@ def reconstruction_loss(targets, outputs):
     loss = tf.reduce_mean(tf.reduce_sum(loss, axis=(1, 2)))
     return loss
 
-beta = 0.1
+beta = 1
 kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
 kl_loss = beta * tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
 
@@ -144,7 +155,7 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 # the validation loss for three consecutive epochs
 early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
 
-epochs = 25
+epochs = 10
 batch_size = 128
 
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -205,3 +216,4 @@ plt.title('Digit Classes in Latent Space')
 plt.xlabel('z[0]')
 plt.ylabel('z[1]')
 plt.savefig('latent_scatter.pdf')
+
