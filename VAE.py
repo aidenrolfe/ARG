@@ -7,27 +7,22 @@ from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
 from datetime import datetime
 
+conditional = 'yes'
+digit = 3
+
 # Creates noisy digits
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
-#labels = y_test
-
-conditional = input('Conditional? [yes or no] ')
-digit = int(input('What digit? '))
-
 # create digit filter
-train_filter = np.where((y_train == digit))
-test_filter = np.where((y_test == digit))
+train_filter = y_train == digit
+test_filter = y_test == digit
 
 # apply filter to MNIST data set
 x_train, y_train = x_train[train_filter], y_train[train_filter]
 x_test, y_test = x_test[test_filter], y_test[test_filter]
 
 labels = y_test
-
-#x_train = x_train[y_train == 5]
-#x_test = x_test[y_test == 5]
 
 x_train = x_train.astype('float32') / 255.
 x_test = x_test.astype('float32') / 255.
