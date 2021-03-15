@@ -7,16 +7,21 @@ from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
 from datetime import datetime
 
-conditional = 'yes'
-digit = 3
 
 # Creates noisy digits
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
+# conditional = input('Conditional? [yes or no] ')
+
+# digit = int(input('What digit? '))
+
+conditional = 'yes'
+digit = 3
+
 # create digit filter
 train_filter = y_train == digit
-test_filter = y_test == digit
+test_filter =y_test == digit
 
 # apply filter to MNIST data set
 x_train, y_train = x_train[train_filter], y_train[train_filter]
@@ -24,14 +29,40 @@ x_test, y_test = x_test[test_filter], y_test[test_filter]
 
 labels = y_test
 
+#x_train = x_train[y_train == 5]
+#x_test = x_test[y_test == 5]
+
 x_train = x_train.astype('float32') / 255.
 x_test = x_test.astype('float32') / 255.
 x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))
 x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))
 
+# find array shapes
+n_train, w_train, h_train, c_train = x_train.shape
+n_test, w_test, h_test, c_test = x_test.shape
+
+c_train = 3 # set equal to 3 so imshow will produce a colour image
+c_test = 3
+
+x_train_colour = x_train * np.ones(c_train)
+x_test_colour = x_test * np.ones(c_test)
+
+# gives the r, g, b level for each of the n images
+
+colours_train = np.random.uniform(size=(n_train, c_train))
+colours_test = np.random.uniform(size=(n_test, c_test))
+
+# add in the missing width and height axes
+
+colours_train = colours_train[:, None, None, :]
+colours_test = colours_test[:, None, None, :]
+
+x_train_colour = x_train * colours_train
+x_test_colour = x_test * colours_test
+
 noise_factor = 0.5
-x_train_noisy = x_train + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_train.shape) 
-x_test_noisy = x_test + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_test.shape) 
+x_train_noisy = x_train_colour + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_train_colour.shape) 
+x_test_noisy = x_test_colour + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_test_colour.shape) 
 
 x_train_noisy = np.clip(x_train_noisy, 0., 1.)
 x_test_noisy = np.clip(x_test_noisy, 0., 1.)
@@ -64,9 +95,9 @@ class Sampling(layers.Layer):
     
 # build the encoder
 
-latent_dim = 2
+latent_dim = 5
 
-encoder_inputs = keras.Input(shape=(28, 28, 1))
+encoder_inputs = keras.Input(shape=(28, 28, 3))
 # We need another input for the labels.
 # If our condition were a continuous quantity, this could just be
 # that value, but here we have a set of categorical classes:
@@ -127,7 +158,7 @@ def reconstruction_loss(targets, outputs):
     loss = tf.reduce_mean(tf.reduce_sum(loss, axis=(1, 2)))
     return loss
 
-beta = 1
+beta = 0.1
 kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
 kl_loss = beta * tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
 
@@ -157,21 +188,21 @@ logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
 if conditional=='yes':
-    history = vae.fit([x_train_noisy, y_train], x_train,
+    history = vae.fit([x_train_noisy, y_train], x_train_colour,
                       epochs=epochs,
                       batch_size=batch_size,
                       shuffle=True,
-                      validation_data=([x_test_noisy, y_test], x_test),
+                      validation_data=([x_test_noisy, y_test], x_test_colour),
                       callbacks=[tensorboard_callback, early_stopping_callback])
     
     reconstructions = vae.predict([x_test_noisy, y_test])
     z_mean, z_log_var, z = encoder.predict([x_test_noisy, y_test])
 else:
-    history = vae.fit(x_train_noisy, x_train,
+    history = vae.fit(x_train_noisy, x_train_colour,
                       epochs=epochs,
                       batch_size=batch_size,
                       shuffle=True,
-                      validation_data=(x_test_noisy, x_test),
+                      validation_data=(x_test_noisy, x_test_colour),
                       callbacks=[tensorboard_callback, early_stopping_callback])
     
     reconstructions = vae.predict(x_test_noisy)
@@ -192,7 +223,7 @@ plt.savefig('model_loss.pdf')
 n = 10
 fig, axarr = plt.subplots(3, n, figsize=(20, 6))
 for i, ax in enumerate(axarr[0]):
-    ax.imshow(x_test[i], cmap='gray')
+    ax.imshow(x_test_colour[i], cmap='gray')
 for i, ax in enumerate(axarr[1]):
     ax.imshow(x_test_noisy[i], cmap='gray')
 for i, ax in enumerate(axarr[2]):
@@ -211,4 +242,3 @@ plt.title('Digit Classes in Latent Space')
 plt.xlabel('z[0]')
 plt.ylabel('z[1]')
 plt.savefig('latent_scatter.pdf')
-
