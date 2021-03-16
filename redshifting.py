@@ -2,9 +2,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.ndimage import zoom
 from astropy import convolution as conv
-from astropy import cosmology as cosmo
 from scipy import signal as sig
 import random
+
+from astropy.cosmology import FlatLambdaCDM
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
+
 
 
 # read in galaxy:
@@ -31,6 +34,7 @@ def observe_gal(image, input_redshift, output_redshift, seeing):
     return image
 
 
+
 # convolving image with gaussian psf:
 def convolve_psf(image, seeing):
     psf = conv.Gaussian2DKernel(seeing, x_size=60, y_size=60)
@@ -40,6 +44,7 @@ def convolve_psf(image, seeing):
         convolved[i] = sig.convolve2d(image[...,i], psf.array, mode = 'same')
     return convolved
 
+# convolved image:
 convolved_image = convolve_psf(image,seeing)
 
 for j in range(17):
@@ -57,36 +62,102 @@ plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' aft
 plt.show()   
 
 
+
 # changes to brightness:
 def dimming(image, input_redshift, output_redshift):
     d_i = cosmo.luminosity_distance(input_redshift)
-    d_o = cosmo.luminsoity_distance(output_redshift)
+    d_o = cosmo.luminosity_distance(output_redshift)
     dimming = (d_i / d_o)**2
     dimmed = image * dimming
     return dimmed
 
+
+# Can't get the below to work for a test across all filters yet - 
 # changes to size:
 def rebinning(image, input_redshift, output_redshift):
     d_i = cosmo.luminosity_distance(input_redshift)
-    d_o = cosmo.luminsoity_distance(output_redshift)
+    d_o = cosmo.luminosity_distance(output_redshift)
     scale_factor = (d_i / (1 + input_redshift)**2) / (d_o / (1 + output_redshift)**2)
-    rebinned = zoom(image, scale_factor)
+    rebinned = np.empty((17, 60, 60))
+    for r in range(17):
+        rebinned[r] = zoom(image[...,r], scale_factor)
     return rebinned
+
+# rebinned image:
+rebinned_image = rebinning(image, input_redshift, output_redshift)
+ 
+for d in range(17):
+    plt.subplot(3,6,d+1)
+    plt.imshow(image[...,d], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' before rebinning') 
+plt.show() 
+
+for e in range(17):
+    plt.subplot(3,6,e+1)
+    plt.imshow(rebinned_image[e], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' after rebinning') 
+plt.show() 
   
-  # does this need to be normalised by dividing by the sum of the image/flux?
+# does this need to be normalised by dividing by the sum of the image/flux?
+   
+    
     
 # adding shot noise (from variations in the detection of photons from the source):
-def add_shot_noise(image, output_exptime):
+def add_shot_noise(image):
     
-    with_shot_noise = np.random.poisson(image)
+    with_shot_noise = np.empty((17, 60, 60))
+    for s in range(17):
+        with_shot_noise[s] = np.random.poisson(image[...,s])
     return with_shot_noise
+
+# image with noise:
+image_with_shot_noise = add_shot_noise(image)
+
+for f in range(17):
+    plt.subplot(3,6,f+1)
+    plt.imshow(image[...,f], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' before shot noise') 
+plt.show() 
+
+for g in range(17):
+    plt.subplot(3,6,g+1)
+    plt.imshow(image_with_shot_noise[g], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' after shot noise') 
+plt.show() 
+
+
 
 # adding background noise (from numerous sources - i.e. the sky, electrons in detector which are appearing randomly from thermal noise): 
 def add_background(image):
     
     # peak needs to be tested to find a suitable value to determine the amount of background noise added to be realistic
-    with_background = np.random.normal(mean=0, peak=1, image=image)
+    with_background = np.empty((17, 60, 60))
+    for x in range(17):
+        with_background[x] = np.random.normal(loc=0.0, scale=1, size=[60,60])
     return with_background
+
+# image with background:
+image_with_background = add_background(image)
+
+for y in range(17):
+    plt.subplot(3,6,y+1)
+    plt.imshow(image[...,y], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' before background') 
+plt.show() 
+
+for z in range(17):
+    plt.subplot(3,6,z+1)
+    plt.imshow(image_with_background[z], interpolation='none', origin='lower', cmap='inferno', vmin=0, vmax=1)
+    plt.axis('off') 
+plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' after background') 
+plt.show()
+
+
 
 # saving data for use in VAE:
 def save_data(image):
