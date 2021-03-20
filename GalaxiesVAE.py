@@ -8,6 +8,7 @@ from tensorflow.keras.utils import to_categorical
 from datetime import datetime
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+import random
 
 # import simulated galaxies
 
@@ -25,12 +26,10 @@ with open('targetgalaxies.npy','rb') as g:
 
 conditional = 'no'
 
-z_inputs = int(len(gal_input)/2)*[z_input]
-z_targets = int(len(gal_target)/2)*[z_target]
+z_inputs = len(gal_input)*[z_input]
+z_targets = len(gal_target)*[z_target]
 
-redshifts = np.concatenate((z_inputs,z_targets)) # combine redshifts into 1 array
-
-
+redshifts = np.transpose([z_inputs, z_targets]) # combine redshifts into 1 array
 
 # shuffle and then split galaxy and redshift data into test and train sets
 gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_train, redshifts_test \
@@ -39,21 +38,9 @@ gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_tr
 n_input_train, w, h, c = gal_input_train.shape
 n_input_test, _, _, _ = gal_input_test.shape
 
-labels = redshifts_test
+z_labels = redshifts_test
 
-# Our conditions will be the labels of the input digits.
-# We could perhaps just give the label itself here (divided
-# by num_classes in order to normalise):
-#y_train = y_train.astype('float32') / num_classes
-#y_test = y_test.astype('float32') / num_classes
-# However, these are categories, rather than a continuum,
-# so in this case it is probably more appropriate to use a set
-# of num_classes inputs, giving the probability that the label
-# belongs to each class (these will all be zero, except for one,
-# which will be one - a so-called "one hot" encoding).
-num_classes = 2
-# y_train = to_categorical(y_train, num_classes)
-# y_test = to_categorical(y_test, num_classes)
+z_condition = 2
 
 # create a sampling layer
 
@@ -75,7 +62,7 @@ encoder_inputs = keras.Input(shape=(w, h, c))
 # We need another input for the labels.
 # If our condition were a continuous quantity, this could just be
 # that value, but here we have a set of categorical classes:
-condition_inputs = keras.Input(shape=(num_classes,))
+condition_inputs = keras.Input(shape=(z_condition,))
 x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
@@ -184,6 +171,9 @@ else:
     reconstructions = vae.predict(gal_input_test)
     z_mean, z_log_var, z = encoder.predict(gal_input_test)
 
+
+vae.save('Galaxy_Model') # Save model for future use
+
 # summarize history for loss
 
 plt.plot(history.history['loss'],'b')
@@ -196,22 +186,32 @@ plt.savefig('model_loss.pdf')
 
 # show what the original, simulated and reconstructed galaxies look like
 
-n = 10
-fig, axarr = plt.subplots(3, n, figsize=(20, 6))
+n = 17 # number of filters
+m = gal_target_test.shape[0]
+r = random.randint(0,m-1) # choosing a random galaxy to plot (as input and target redshift)
+fig, axarr = plt.subplots(3, n, figsize=(30, 6))
 for i, ax in enumerate(axarr[0]):
-    ax.imshow(gal_target_test[i], cmap='gray')
+    ax.imshow(gal_target_test[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for i, ax in enumerate(axarr[1]):
-    ax.imshow(gal_input_test[i], cmap='gray')
+    ax.imshow(gal_input_test[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for i, ax in enumerate(axarr[2]):
-    ax.imshow(reconstructions[i], cmap='gray')
+    ax.imshow(reconstructions[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for ax in axarr.flat:
     ax.axis('off')
+plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[0,0],2)) \
+             + ' and target z = ' + str(np.round(redshifts[0,1],2)))
 plt.savefig('examples.pdf')
 
-# display a 2D plot of the digit classes in the latent space
+# display a 2D plot of redshifting condition in the latent space
 
 fig, axarr = plt.subplots(figsize=(6, 6))
-plt.scatter(z[:, 0], z[:, 1], c=labels, marker='.')
+plt.scatter(z[:, 0], z[:, 1], c=z_labels, marker='.')
 plt.axis('square')
 plt.colorbar()
 plt.title('Digit Classes in Latent Space')
