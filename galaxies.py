@@ -38,8 +38,8 @@ r = z.shape[0]
 def input_target(r,gal_seds):
     z_in_idx = random.randint(0,round((r-1)/2))
     z_out_idx = random.randint(1,round((r-1)/2)) + z_in_idx
-    gal_seds_in = gal_seds[z_in_idx]*1e9
-    gal_seds_out = gal_seds[z_out_idx]*1e9
+    gal_seds_in = gal_seds[z_in_idx]
+    gal_seds_out = gal_seds[z_out_idx]
     return gal_seds_in, z_in_idx, gal_seds_out, z_out_idx
 
 gal_seds_in, z_in_idx, gal_seds_out, z_out_idx = input_target(r,gal_seds)
@@ -72,15 +72,20 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
     gal_seds_out = gal_seds_out.T[:,None,None]
     gal_input = gal_images*gal_seds_in
     gal_target = gal_images*gal_seds_out
+    # normalise final image+SED combination
+    for j in range(n):
+        gal_input[j] /= np.max(gal_input[j])
+        gal_target[j] /= np.max(gal_target[j])
     return gal_input, gal_target
 
 gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
 
+# making input and target redshift arrays size n
+z_in = np.full((n,1), z[z_in_idx])
+z_out = np.full((n,1), z[z_out_idx])
+
 ## saving input and target galaxies to npy files
-with open('inputgalaxies.npy','wb') as f:
-    np.save(f,gal_input)
-    np.save(f,z[z_in_idx])
-    
-with open('targetgalaxies.npy','wb') as g:
-    np.save(g,gal_target)
-    np.save(g,z[z_out_idx])
+np.save('inputgalaxies.npy', gal_input)
+np.save('inputredshifts.npy', z_in)
+np.save('targetgalaxies.npy', gal_target)
+np.save('targetredshifts.npy', z_out)
