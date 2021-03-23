@@ -13,7 +13,7 @@ input_redshift = np.load('inputredshifts.npy')
 target_image = np.load('targetgalaxies.npy')
 output_redshift = np.load('targetredshifts.npy')
 
-n = gal_input.shape[0]
+n = image.shape[0]
 m = random.randint(0,n-1)
 
 image = gal_input[m,...] # testing with one input image (all filters)
@@ -91,6 +91,7 @@ plt.suptitle('Image ' + str(m) + ' at redshift = ' + str(input_redshift) + ' aft
 plt.show()
 
 
+convolved_image, target_convolved_image = convolve_psf(image,seeing)
 
 
 # Can't get the below to work for a test across all filters yet - 
