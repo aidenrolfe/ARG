@@ -1,55 +1,41 @@
+import sys
 import h5py
 import numpy as np
 from astropy.modeling.models import Sersic2D
-import random
+from matplotlib import pyplot as plt
 
-## HDF file produced by running candels_example.py
-filename = "candels.goodss.models.test.hdf"
-f = h5py.File(filename,'r')
-list(f.keys())
-
-z = np.array(f['z']) # redshift values
-wl = np.array(f['wl']) # wavelength for each filter
-flux = np.array(f['fluxes']) # flux at each redshift + filter
 
 ## reshaping flux array into (redshifts,filters,fluxes)
 def flux_reshape(flux):    
     a = flux.shape[0]
     b = flux.shape[1]
-    c = flux.shape[2]*flux.shape[3]*flux.shape[4]*flux.shape[5]*flux.shape[6]
-    flux0 = np.reshape(flux,(a,b,c))
+    flux0 = np.reshape(flux, (a, b, -1))
     return flux0
 
-flux0 = flux_reshape(flux)
-
-n = 100 # number of galaxies generated
 
 ## random selection of SEDs
-def choose_seds(flux0):
-    sed_idx = np.random.choice(flux0.shape[2], size=n) # array of n SEDs
+def choose_seds(flux0, n):
+    # array of n SEDs
+    sed_idx = np.random.choice(flux0.shape[2], size=n)
     gal_seds = flux0[:,:,sed_idx]
     return gal_seds
 
-gal_seds = choose_seds(flux0)
-    
-r = z.shape[0]
 
-## random selection for input and target galaxy redshift    
-def input_target(r,gal_seds):
-    z_in_idx = random.randint(0,round((r-1)/2))
-    z_out_idx = random.randint(1,round((r-1)/2)) + z_in_idx
-    gal_seds_in = gal_seds[z_in_idx]
-    gal_seds_out = gal_seds[z_out_idx]
+## selection for input and target galaxy redshift    
+def input_target(gal_seds, z_idx=None):
+    n = gal_seds.shape[2]
+    if z_idx is None:
+        max_z_idx = gal_seds.shape[0]
+        z_in_idx = np.random.randint(max_z_idx - 1, size=n)
+        z_out_idx = np.random.randint(z_in_idx + 1, max_z_idx, size=n)
+    else:
+        # use provided input and target redshift indices
+        z_in_idx, z_out_idx = [i * np.ones(n) for i in z_idx]
+    # get selected redshift for each SED
+    gal_seds_in = gal_seds[z_in_idx, :, np.arange(n)]
+    gal_seds_out = gal_seds[z_out_idx, :, np.arange(n)]
     return gal_seds_in, z_in_idx, gal_seds_out, z_out_idx
 
-gal_seds_in, z_in_idx, gal_seds_out, z_out_idx = input_target(r,gal_seds)
-
-## generate sersic galaxies
-np.random.seed(4251)
-elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
-PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
-Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
-sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
 
 def make_gals(el, pa, re, sersic, size=(60, 60)):
     x,y = np.meshgrid(np.arange(size[0]), np.arange(size[1]))
@@ -63,29 +49,82 @@ def make_gals(el, pa, re, sersic, size=(60, 60)):
         gal_array.append(norm)
     return np.array(gal_array)
 
+
 ## reshape image and SED array to allow for multiplication
 ## combine sersic galaxies with input and target SEDs
 def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
-    gal_images = make_gals(elip, PAs, Reff, sersic) # array of n galaxies
+    gal_images = make_gals(el, pa, re, sersic) # array of n galaxies
     gal_images = gal_images[...,None]
-    gal_seds_in = gal_seds_in.T[:,None,None]
-    gal_seds_out = gal_seds_out.T[:,None,None]
-    gal_input = gal_images*gal_seds_in
-    gal_target = gal_images*gal_seds_out
-    # normalise final image+SED combination
-    for j in range(n):
-        gal_input[j] /= np.max(gal_input[j])
-        gal_target[j] /= np.max(gal_target[j])
+    gal_seds_in = gal_seds_in[:,None,None]
+    gal_seds_out = gal_seds_out[:,None,None]
+    gal_input = gal_images * gal_seds_in
+    gal_target = gal_images * gal_seds_out
     return gal_input, gal_target
 
-gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
 
-# making input and target redshift arrays size n
-z_in = np.full((n,1), z[z_in_idx])
-z_out = np.full((n,1), z[z_out_idx])
+def plot_example(gal_input, gal_target, z_input, z_target):
+    n, w, h, c = gal_input.shape
+    fig, ax = plt.subplots(3, c, figsize=(2*c, 7))
+    i = np.random.default_rng().choice(n)
+    vmax = gal_input[i].max()
+    for j in range(c):
+        ax[0][j].imshow(gal_input[i, ..., j], vmin=0, vmax=vmax)
+        ax[1][j].imshow(gal_target[i, ..., j], vmin=0, vmax=vmax)
+        for k in [0, 1]:
+            ax[k, j].set_xticks([])
+            ax[k, j].set_yticks([])
+    ax[0][0].set_ylabel(f"input z={z_input[i]:.2f}")
+    ax[1][0].set_ylabel(f"target z={z_target[i]:.2f}")
+    ax_input = plt.subplot(3, 1, 3)
+    ax_target = ax_input.twinx()
+    ax_input.plot(np.arange(c), gal_input[i].sum(axis=(0, 1)), 'bo-', label='input')
+    ax_target.plot(np.arange(c), gal_target[i].sum(axis=(0, 1)), 'ro-', label='target')
+    ax_input.set_xlabel('filter number')
+    ax_input.set_ylabel('input flux')
+    ax_target.set_ylabel('target flux')
+    ax_input.set_xlim(-0.5, c-0.5)
+    plt.tight_layout()
+    plt.savefig('example.pdf')
 
-## saving input and target galaxies to npy files
-np.save('inputgalaxies.npy', gal_input)
-np.save('inputredshifts.npy', z_in)
-np.save('targetgalaxies.npy', gal_target)
-np.save('targetredshifts.npy', z_out)
+
+def main(n=100):
+    ## HDF file produced by running candels_example.py
+    filename = "candels.goodss.models.test.hdf"
+    f = h5py.File(filename,'r')
+    list(f.keys())
+
+    z = np.array(f['z']) # redshift values
+    wl = np.array(f['wl']) # wavelength for each filter
+    flux = np.array(f['fluxes']) # flux at each redshift + filter
+    flux *= 1e9
+    flux = flux_reshape(flux)
+
+    np.random.seed(4251)
+
+    gal_seds = choose_seds(flux, n)
+    
+    gal_seds_in, z_in_idx, gal_seds_out, z_out_idx = input_target(gal_seds)
+
+    ## generate sersic galaxies
+    elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
+    PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
+    Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
+    sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
+
+    gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
+
+    # making input and target redshift arrays
+    z_in = z[z_in_idx]
+    z_out = z[z_out_idx]
+
+    plot_example(gal_input, gal_target, z_in, z_out)
+    
+    ## saving input and target galaxies to npy files
+    np.save('inputgalaxies.npy', gal_input)
+    np.save('inputredshifts.npy', z_in)
+    np.save('targetgalaxies.npy', gal_target)
+    np.save('targetredshifts.npy', z_out)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
