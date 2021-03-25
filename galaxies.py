@@ -2,7 +2,6 @@ import sys
 import h5py
 import numpy as np
 from astropy.modeling.models import Sersic2D
-from matplotlib import pyplot as plt
 
 
 ## reshaping flux array into (redshifts,filters,fluxes)
@@ -62,31 +61,6 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
     return gal_input, gal_target
 
 
-def plot_example(gal_input, gal_target, z_input, z_target):
-    n, w, h, c = gal_input.shape
-    fig, ax = plt.subplots(3, c, figsize=(2*c, 7))
-    i = np.random.default_rng().choice(n)
-    vmax = gal_input[i].max()
-    for j in range(c):
-        ax[0][j].imshow(gal_input[i, ..., j], vmin=0, vmax=vmax)
-        ax[1][j].imshow(gal_target[i, ..., j], vmin=0, vmax=vmax)
-        for k in [0, 1]:
-            ax[k, j].set_xticks([])
-            ax[k, j].set_yticks([])
-    ax[0][0].set_ylabel(f"input z={z_input[i]:.2f}")
-    ax[1][0].set_ylabel(f"target z={z_target[i]:.2f}")
-    ax_input = plt.subplot(3, 1, 3)
-    ax_target = ax_input.twinx()
-    ax_input.plot(np.arange(c), gal_input[i].sum(axis=(0, 1)), 'bo-', label='input')
-    ax_target.plot(np.arange(c), gal_target[i].sum(axis=(0, 1)), 'ro-', label='target')
-    ax_input.set_xlabel('filter number')
-    ax_input.set_ylabel('input flux')
-    ax_target.set_ylabel('target flux')
-    ax_input.set_xlim(-0.5, c-0.5)
-    plt.tight_layout()
-    plt.savefig('example.pdf')
-
-
 def main(n=100):
     ## HDF file produced by running candels_example.py
     filename = "candels.goodss.models.test.hdf"
@@ -116,8 +90,6 @@ def main(n=100):
     # making input and target redshift arrays
     z_in = z[z_in_idx]
     z_out = z[z_out_idx]
-
-    plot_example(gal_input, gal_target, z_in, z_out)
     
     ## saving input and target galaxies to npy files
     np.save('inputgalaxies.npy', gal_input)
