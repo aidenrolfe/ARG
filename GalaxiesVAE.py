@@ -6,80 +6,39 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
 from datetime import datetime
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+import random
 
+# import simulated galaxies
 
-# Creates noisy digits
+with open('inputgalaxies.npy','rb') as f:
 
-(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+  gal_input = np.load(f)
+  
+  z_input = np.load(f)
+  
+with open('targetgalaxies.npy','rb') as g:
 
-# conditional = input('Conditional? [yes or no] ')
+  gal_target = np.load(g)
+  
+  z_target = np.load(g)
 
-# digit = int(input('What digit? '))
+conditional = 'no'
 
-conditional = 'yes'
-digit = 3
+z_inputs = len(gal_input)*[z_input]
+z_targets = len(gal_target)*[z_target]
 
-# create digit filter
-train_filter = y_train == digit
-test_filter =y_test == digit
+redshifts = np.transpose([z_inputs, z_targets]) # combine redshifts into 1 array
 
-# apply filter to MNIST data set
-x_train, y_train = x_train[train_filter], y_train[train_filter]
-x_test, y_test = x_test[test_filter], y_test[test_filter]
+# shuffle and then split galaxy and redshift data into test and train sets
+gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_train, redshifts_test \
+    = train_test_split(gal_input, gal_target, redshifts, test_size=0.2, shuffle=True)
 
-labels = y_test
+n_input_train, w, h, c = gal_input_train.shape
+n_input_test, _, _, _ = gal_input_test.shape
 
-#x_train = x_train[y_train == 5]
-#x_test = x_test[y_test == 5]
-
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
-x_train = np.reshape(x_train, (len(x_train), 28, 28, 1))
-x_test = np.reshape(x_test, (len(x_test), 28, 28, 1))
-
-# find array shapes
-n_train, w_train, h_train, c_train = x_train.shape
-n_test, w_test, h_test, c_test = x_test.shape
-
-c_train = 3 # set equal to 3 so imshow will produce a colour image
-c_test = 3
-
-x_train_colour = x_train * np.ones(c_train)
-x_test_colour = x_test * np.ones(c_test)
-
-# gives the r, g, b level for each of the n images
-
-colours_train = np.random.uniform(size=(n_train, c_train))
-colours_test = np.random.uniform(size=(n_test, c_test))
-
-# add in the missing width and height axes
-
-colours_train = colours_train[:, None, None, :]
-colours_test = colours_test[:, None, None, :]
-
-x_train_colour = x_train * colours_train
-x_test_colour = x_test * colours_test
-
-noise_factor = 0.5
-x_train_noisy = x_train_colour + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_train_colour.shape) 
-x_test_noisy = x_test_colour + noise_factor * np.random.normal(loc=0.0, scale=1.0, size=x_test_colour.shape) 
-
-x_train_noisy = np.clip(x_train_noisy, 0., 1.)
-x_test_noisy = np.clip(x_test_noisy, 0., 1.)
-
-# Our conditions will be the labels of the input digits.
-# We could perhaps just give the label itself here (divided
-# by num_classes in order to normalise):
-#y_train = y_train.astype('float32') / num_classes
-#y_test = y_test.astype('float32') / num_classes
-# However, these are categories, rather than a continuum,
-# so in this case it is probably more appropriate to use a set
-# of num_classes inputs, giving the probability that the label
-# belongs to each class (these will all be zero, except for one,
-# which will be one - a so-called "one hot" encoding).
-num_classes = 10
-y_train = to_categorical(y_train, num_classes)
-y_test = to_categorical(y_test, num_classes)
+z_condition = 2
 
 # create a sampling layer
 
@@ -97,13 +56,14 @@ class Sampling(layers.Layer):
 
 latent_dim = 5
 
-encoder_inputs = keras.Input(shape=(28, 28, 3))
+encoder_inputs = keras.Input(shape=(w, h, c))
 # We need another input for the labels.
 # If our condition were a continuous quantity, this could just be
 # that value, but here we have a set of categorical classes:
-condition_inputs = keras.Input(shape=(num_classes,))
+condition_inputs = keras.Input(shape=(z_condition,))
 x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
+x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
 # I suggest we try including the conditions here. This means they can
 # be processed (by a couple of fully-connected layers and one
@@ -142,9 +102,10 @@ if conditional=='yes':
 else:
     x = layers.Dense(7 * 7 * 64, activation="relu")(latent_inputs)
 x = layers.Reshape((7, 7, 64))(x)
-x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="same")(x)
+x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="valid")(x)
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
-decoder_outputs = layers.Conv2DTranspose(1, 3, activation="sigmoid", padding="same")(x)
+x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
+decoder_outputs = layers.Conv2DTranspose(c, 3, activation="sigmoid", padding="same")(x)
 if conditional=='yes':
     decoder = keras.Model([latent_inputs, condition_inputs], decoder_outputs, name="decoder")
 else:
@@ -181,32 +142,35 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 # the validation loss for three consecutive epochs
 early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
 
-epochs = 10
+epochs = 100
 batch_size = 128
 
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
 if conditional=='yes':
-    history = vae.fit([x_train_noisy, y_train], x_train_colour,
+    history = vae.fit([gal_input_train, redshifts_train], gal_target_train,
                       epochs=epochs,
                       batch_size=batch_size,
                       shuffle=True,
-                      validation_data=([x_test_noisy, y_test], x_test_colour),
+                      validation_data=([gal_input_test, redshifts_test], gal_target_test),
                       callbacks=[tensorboard_callback, early_stopping_callback])
     
-    reconstructions = vae.predict([x_test_noisy, y_test])
-    z_mean, z_log_var, z = encoder.predict([x_test_noisy, y_test])
+    reconstructions = vae.predict([gal_input_test, redshifts_test])
+    z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
 else:
-    history = vae.fit(x_train_noisy, x_train_colour,
+    history = vae.fit(gal_input_train, gal_target_train,
                       epochs=epochs,
                       batch_size=batch_size,
                       shuffle=True,
-                      validation_data=(x_test_noisy, x_test_colour),
+                      validation_data=(gal_input_test, gal_target_test),
                       callbacks=[tensorboard_callback, early_stopping_callback])
     
-    reconstructions = vae.predict(x_test_noisy)
-    z_mean, z_log_var, z = encoder.predict(x_test_noisy)
+    reconstructions = vae.predict(gal_input_test)
+    z_mean, z_log_var, z = encoder.predict(gal_input_test)
+
+
+vae.save('Galaxy_Model') # Save model for future use
 
 # summarize history for loss
 
@@ -218,26 +182,35 @@ plt.xlabel('epoch')
 plt.legend(['Training', 'Validation'], loc='upper right')
 plt.savefig('model_loss.pdf')
 
-# show what the original, noisy and reconstructed digits look like
+# show what the original, simulated and reconstructed galaxies look like
 
-n = 10
-fig, axarr = plt.subplots(3, n, figsize=(20, 6))
+n = 17 # number of filters
+m = gal_target_test.shape[0]
+r = random.randint(0,m-1) # choosing a random galaxy to plot (as input and target redshift)
+fig, axarr = plt.subplots(3, n, figsize=(30, 6))
 for i, ax in enumerate(axarr[0]):
-    ax.imshow(x_test_colour[i], cmap='gray')
+    ax.imshow(gal_target_test[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for i, ax in enumerate(axarr[1]):
-    ax.imshow(x_test_noisy[i], cmap='gray')
+    ax.imshow(gal_input_test[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for i, ax in enumerate(axarr[2]):
-    ax.imshow(reconstructions[i], cmap='gray')
+    ax.imshow(reconstructions[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=1)
 for ax in axarr.flat:
     ax.axis('off')
+plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[0,0],2)) \
+             + ' and target z = ' + str(np.round(redshifts[0,1],2)))
 plt.savefig('examples.pdf')
 
-# display a 2D plot of the digit classes in the latent space
+# display a 2D plot of redshifting condition in the latent space
 
 fig, axarr = plt.subplots(figsize=(6, 6))
-plt.scatter(z[:, 0], z[:, 1], c=labels, marker='.')
+plt.plot(z[:, 0], z[:, 1], 'k.')
 plt.axis('square')
-plt.colorbar()
 plt.title('Digit Classes in Latent Space')
 plt.xlabel('z[0]')
 plt.ylabel('z[1]')
