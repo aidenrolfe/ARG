@@ -6,25 +6,18 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
 from datetime import datetime
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import random
 
-# import simulated galaxies
+# read in galaxy
 
-with open('inputgalaxies.npy','rb') as f:
+gal_input = np.load('inputgalaxies.npy')
+z_input = np.load('inputredshifts.npy')    
+gal_target = np.load('targetgalaxies.npy')
+z_target = np.load('targetredshifts.npy')
 
-  gal_input = np.load(f)
-  
-  z_input = np.load(f)
-  
-with open('targetgalaxies.npy','rb') as g:
 
-  gal_target = np.load(g)
-  
-  z_target = np.load(g)
-
-conditional = 'no'
+conditional = True
 
 z_inputs = len(gal_input)*[z_input]
 z_targets = len(gal_target)*[z_target]
@@ -54,25 +47,17 @@ class Sampling(layers.Layer):
     
 # build the encoder
 
-latent_dim = 5
+latent_dim = 10
 
 encoder_inputs = keras.Input(shape=(w, h, c))
-# We need another input for the labels.
-# If our condition were a continuous quantity, this could just be
-# that value, but here we have a set of categorical classes:
 condition_inputs = keras.Input(shape=(z_condition,))
 x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
+x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
-# I suggest we try including the conditions here. This means they can
-# be processed (by a couple of fully-connected layers and one
-# non-linearity) in producing the latent encoding, but avoids some
-# complications of adding them in earlier. This is ok, because the
-# basic features that the network needs to learn should not depend
-# very strongly on the labels, but including them here should allow
-# our encoding to be more efficient representation of each class.
-if conditional=='yes':
+
+if conditional:
     x = layers.Concatenate()([x, condition_inputs])
     x = layers.Dense(16, activation="relu")(x)
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
@@ -96,7 +81,7 @@ latent_inputs = keras.Input(shape=(latent_dim,))
 # advantages: (1) it means that the latent encoding does not need to
 # contain the condition, so can be more efficient, and (2) if we use
 # the decoder alone, we can specify the condition.
-if conditional=='yes':
+if conditional:
     x = layers.Concatenate()([latent_inputs, condition_inputs])
     x = layers.Dense(7 * 7 * 64, activation="relu")(x)
 else:
@@ -106,7 +91,7 @@ x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="valid")
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
 decoder_outputs = layers.Conv2DTranspose(c, 3, activation="sigmoid", padding="same")(x)
-if conditional=='yes':
+if conditional:
     decoder = keras.Model([latent_inputs, condition_inputs], decoder_outputs, name="decoder")
 else:
     decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
@@ -123,7 +108,7 @@ beta = 0.1
 kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
 kl_loss = beta * tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
 
-if conditional=='yes':
+if conditional:
     vae_outputs = decoder([encoder([encoder_inputs, condition_inputs])[-1],
                            condition_inputs])
     vae = keras.Model([encoder_inputs, condition_inputs], vae_outputs)
@@ -142,13 +127,13 @@ vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
 # the validation loss for three consecutive epochs
 early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
 
-epochs = 100
+epochs = 1000
 batch_size = 128
 
 logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
-if conditional=='yes':
+if conditional:
     history = vae.fit([gal_input_train, redshifts_train], gal_target_train,
                       epochs=epochs,
                       batch_size=batch_size,
