@@ -38,8 +38,6 @@ gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_tr
 n_input_train, w, h, c = gal_input_train.shape
 n_input_test, _, _, _ = gal_input_test.shape
 
-z_labels = redshifts_test
-
 z_condition = 2
 
 # create a sampling layer
@@ -211,9 +209,8 @@ plt.savefig('examples.pdf')
 # display a 2D plot of redshifting condition in the latent space
 
 fig, axarr = plt.subplots(figsize=(6, 6))
-plt.scatter(z[:, 0], z[:, 1], c=z_labels, marker='.')
+plt.plot(z[:, 0], z[:, 1], 'k.')
 plt.axis('square')
-plt.colorbar()
 plt.title('Digit Classes in Latent Space')
 plt.xlabel('z[0]')
 plt.ylabel('z[1]')
