@@ -25,7 +25,7 @@ def input_target(gal_seds, z_idx=None):
     n = gal_seds.shape[2]
     if z_idx is None:
         max_z_idx = gal_seds.shape[0]
-        z_in_idx = np.random.randint(max_z_idx - 1, size=n)
+        z_in_idx = np.random.randint(1, max_z_idx - 1, size=n)
         z_out_idx = np.random.randint(z_in_idx + 1, max_z_idx, size=n)
     else:
         # use provided input and target redshift indices
