@@ -86,6 +86,10 @@ def main(n=100):
     sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
 
     gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
+    
+    # reduce the number of filters included to 9
+    gal_input = np.delete(gal_input, np.arange(1,17,2), axis = 3)
+    gal_target = np.delete(gal_target, np.arange(1,17,2), axis = 3)
 
     # making input and target redshift arrays
     z_in = z[z_in_idx]
