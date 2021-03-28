@@ -12,21 +12,33 @@ import random
 # read in galaxy
 
 gal_input = np.load('inputgalaxies.npy')
-z_input = np.load('inputredshifts.npy')    
+z_input = np.load('inputredshifts.npy')
 gal_target = np.load('targetgalaxies.npy')
 z_target = np.load('targetredshifts.npy')
 
+conditional = False
 
-conditional = True
-
-z_inputs = len(gal_input)*[z_input]
-z_targets = len(gal_target)*[z_target]
-
-redshifts = np.transpose([z_inputs, z_targets]) # combine redshifts into 1 array
+redshifts = np.transpose([z_input, z_target]) # combine redshifts into 1 array
 
 # shuffle and then split galaxy and redshift data into test and train sets
 gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_train, redshifts_test \
     = train_test_split(gal_input, gal_target, redshifts, test_size=0.2, shuffle=True)
+
+# normalize each example, could reapply these at end
+def norm(x):
+    r = x.reshape((x.shape[0], -1))
+    scale = r.std(axis=-1)
+    r = r / scale[:, None]
+    x = r.reshape(x.shape)
+    return scale, x
+
+gal_input_train_scale, gal_input_train = norm(gal_input_train)
+gal_input_test_scale, gal_input_test = norm(gal_input_test)
+gal_target_train_scale, gal_target_train = norm(gal_target_train)
+gal_target_test_scale, gal_target_test = norm(gal_target_test)
+
+# Could perhaps add input scale to the condition to help get noise right (of that's what we want)
+# We won't have the target scale during inference, so should train network to output it?
 
 n_input_train, w, h, c = gal_input_train.shape
 n_input_test, _, _, _ = gal_input_test.shape
@@ -47,25 +59,26 @@ class Sampling(layers.Layer):
     
 # build the encoder
 
-latent_dim = 10
+latent_dim = 32
 
 encoder_inputs = keras.Input(shape=(w, h, c))
 condition_inputs = keras.Input(shape=(z_condition,))
-x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
+x = layers.Conv2D(64, 1, activation="relu", strides=1, padding="same")(encoder_inputs)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
+x = layers.Conv2D(64, 3, activation="relu", strides=3, padding="same")(x)
+x = layers.Conv2D(128, 3, activation="relu", strides=3, padding="same")(x)
+#x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
 
 if conditional:
     x = layers.Concatenate()([x, condition_inputs])
-    x = layers.Dense(16, activation="relu")(x)
+    x = layers.Dense(64, activation="relu")(x)
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
     z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
     z = Sampling()([z_mean, z_log_var])
     encoder = keras.Model([encoder_inputs, condition_inputs], [z_mean, z_log_var, z], name="encoder")
 else:
-    x = layers.Dense(16, activation="relu")(x)
+    x = layers.Dense(64, activation="relu")(x)
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
     z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
     z = Sampling()([z_mean, z_log_var])
@@ -90,7 +103,7 @@ x = layers.Reshape((7, 7, 64))(x)
 x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="valid")(x)
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
-decoder_outputs = layers.Conv2DTranspose(c, 3, activation="sigmoid", padding="same")(x)
+decoder_outputs = layers.Conv2DTranspose(c, 3, padding="same")(x)
 if conditional:
     decoder = keras.Model([latent_inputs, condition_inputs], decoder_outputs, name="decoder")
 else:
@@ -144,11 +157,11 @@ if conditional:
     reconstructions = vae.predict([gal_input_test, redshifts_test])
     z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
 else:
-    history = vae.fit(gal_input_train, gal_target_train,
+    history = vae.fit(gal_input_train, gal_input_train,
                       epochs=epochs,
                       batch_size=batch_size,
                       shuffle=True,
-                      validation_data=(gal_input_test, gal_target_test),
+                      validation_data=(gal_input_test, gal_input_test),
                       callbacks=[tensorboard_callback, early_stopping_callback])
     
     reconstructions = vae.predict(gal_input_test)
@@ -172,19 +185,20 @@ plt.savefig('model_loss.pdf')
 n = 17 # number of filters
 m = gal_target_test.shape[0]
 r = random.randint(0,m-1) # choosing a random galaxy to plot (as input and target redshift)
+vmax = gal_target_test[r].max()
 fig, axarr = plt.subplots(3, n, figsize=(30, 6))
 for i, ax in enumerate(axarr[0]):
-    ax.imshow(gal_target_test[r,:,:,i], cmap='inferno',
-               origin='lower', interpolation='nearest',
-               vmin=0, vmax=1)
-for i, ax in enumerate(axarr[1]):
     ax.imshow(gal_input_test[r,:,:,i], cmap='inferno',
                origin='lower', interpolation='nearest',
-               vmin=0, vmax=1)
+               vmin=0, vmax=vmax)
+for i, ax in enumerate(axarr[1]):
+    ax.imshow(gal_target_test[r,:,:,i], cmap='inferno',
+               origin='lower', interpolation='nearest',
+               vmin=0, vmax=vmax)
 for i, ax in enumerate(axarr[2]):
     ax.imshow(reconstructions[r,:,:,i], cmap='inferno',
                origin='lower', interpolation='nearest',
-               vmin=0, vmax=1)
+               vmin=0, vmax=vmax)
 for ax in axarr.flat:
     ax.axis('off')
 plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[0,0],2)) \
