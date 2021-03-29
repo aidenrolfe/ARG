@@ -16,7 +16,7 @@ z_input = np.load('inputredshifts.npy')
 gal_target = np.load('targetgalaxies.npy')
 z_target = np.load('targetredshifts.npy')
 
-conditional = False
+conditional = True
 
 redshifts = np.transpose([z_input, z_target]) # combine redshifts into 1 array
 
@@ -134,83 +134,95 @@ vae.add_metric(kl_loss, name='kl_loss')
 vae.compile(optimizer=keras.optimizers.Adam(), loss=reconstruction_loss,
             metrics=[reconstruction_loss])
 
-# train the VAE
-
-# This callback will stop the training when there is no improvement in
-# the validation loss for three consecutive epochs
-early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
-
-epochs = 1000
-batch_size = 128
-
-logdir = "/tmp/tb/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
-
-if conditional:
-    history = vae.fit([gal_input_train, redshifts_train], gal_target_train,
-                      epochs=epochs,
-                      batch_size=batch_size,
-                      shuffle=True,
-                      validation_data=([gal_input_test, redshifts_test], gal_target_test),
-                      callbacks=[tensorboard_callback, early_stopping_callback])
-    
-    reconstructions = vae.predict([gal_input_test, redshifts_test])
-    z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
-else:
-    history = vae.fit(gal_input_train, gal_input_train,
-                      epochs=epochs,
-                      batch_size=batch_size,
-                      shuffle=True,
-                      validation_data=(gal_input_test, gal_input_test),
-                      callbacks=[tensorboard_callback, early_stopping_callback])
-    
-    reconstructions = vae.predict(gal_input_test)
-    z_mean, z_log_var, z = encoder.predict(gal_input_test)
+def plot_example(input, target, reconstructions, redshifts, filename="examples.pdf"):
+    m = target.shape[0]
+    r = random.randint(0, m-1) # choosing a random galaxy to plot (as input and target redshift)
+    vmax = target[r].max()
+    fig, axarr = plt.subplots(3, c, figsize=(30, 6))
+    for i, ax in enumerate(axarr[0]):
+        ax.imshow(input[r,:,:,i], cmap='inferno',
+                   origin='lower', interpolation='nearest',
+                   vmin=0, vmax=vmax)
+        if i==0:
+            ax.set_ylabel('input')
+    for i, ax in enumerate(axarr[1]):
+        ax.imshow(target[r,:,:,i], cmap='inferno',
+                   origin='lower', interpolation='nearest',
+                   vmin=0, vmax=vmax)
+        if i==0:
+            ax.set_ylabel('target')
+    for i, ax in enumerate(axarr[2]):
+        ax.imshow(reconstructions[r,:,:,i], cmap='inferno',
+                   origin='lower', interpolation='nearest',
+                   vmin=0, vmax=vmax)
+        if i==0:
+            ax.set_ylabel('reconstruction')
+    for ax in axarr.flat:
+        ax.set_xticks([])
+        ax.set_yticks([])
+    plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[r,0],2)) \
+                 + ' and target z = ' + str(np.round(redshifts[r,1],2)))
+    plt.savefig(filename)
 
 
-vae.save('Galaxy_Model') # Save model for future use
+if __name__ == "__main__":
 
-# summarize history for loss
+    # train the VAE
 
-plt.plot(history.history['loss'],'b')
-plt.plot(history.history['val_loss'],'r')
-plt.title('Model Loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['Training', 'Validation'], loc='upper right')
-plt.savefig('model_loss.pdf')
+    # This callback will stop the training when there is no improvement in
+    # the validation loss for three consecutive epochs
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
 
-# show what the original, simulated and reconstructed galaxies look like
+    epochs = 1000
+    batch_size = 128
 
-n = 17 # number of filters
-m = gal_target_test.shape[0]
-r = random.randint(0,m-1) # choosing a random galaxy to plot (as input and target redshift)
-vmax = gal_target_test[r].max()
-fig, axarr = plt.subplots(3, n, figsize=(30, 6))
-for i, ax in enumerate(axarr[0]):
-    ax.imshow(gal_input_test[r,:,:,i], cmap='inferno',
-               origin='lower', interpolation='nearest',
-               vmin=0, vmax=vmax)
-for i, ax in enumerate(axarr[1]):
-    ax.imshow(gal_target_test[r,:,:,i], cmap='inferno',
-               origin='lower', interpolation='nearest',
-               vmin=0, vmax=vmax)
-for i, ax in enumerate(axarr[2]):
-    ax.imshow(reconstructions[r,:,:,i], cmap='inferno',
-               origin='lower', interpolation='nearest',
-               vmin=0, vmax=vmax)
-for ax in axarr.flat:
-    ax.axis('off')
-plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[0,0],2)) \
-             + ' and target z = ' + str(np.round(redshifts[0,1],2)))
-plt.savefig('examples.pdf')
+    logname = datetime.now().strftime("%Y%m%d-%H%M%S")
+    logdir = f"/tmp/tb/{logname}" 
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
 
-# display a 2D plot of redshifting condition in the latent space
+    if conditional:
+        history = vae.fit([gal_input_train, redshifts_train], gal_target_train,
+                          epochs=epochs,
+                          batch_size=batch_size,
+                          shuffle=True,
+                          validation_data=([gal_input_test, redshifts_test], gal_target_test),
+                          callbacks=[tensorboard_callback, early_stopping_callback])
 
-fig, axarr = plt.subplots(figsize=(6, 6))
-plt.plot(z[:, 0], z[:, 1], 'k.')
-plt.axis('square')
-plt.title('Digit Classes in Latent Space')
-plt.xlabel('z[0]')
-plt.ylabel('z[1]')
-plt.savefig('latent_scatter.pdf')
+        reconstructions = vae.predict([gal_input_test, redshifts_test])
+        z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
+    else:
+        history = vae.fit(gal_input_train, gal_target_train,
+                          epochs=epochs,
+                          batch_size=batch_size,
+                          shuffle=True,
+                          validation_data=(gal_input_test, gal_target_test),
+                          callbacks=[tensorboard_callback, early_stopping_callback])
+
+        reconstructions = vae.predict(gal_input_test)
+        z_mean, z_log_var, z = encoder.predict(gal_input_test)
+
+    vae.save_weights(f'weights_{logname}') # Save model for future use
+
+    # summarize history for loss
+
+    plt.plot(history.history['loss'],'b')
+    plt.plot(history.history['val_loss'],'r')
+    plt.title('Model Loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['Training', 'Validation'], loc='upper right')
+    plt.savefig('model_loss.pdf')
+
+    # show what the original, simulated and reconstructed galaxies look like
+
+    plot_example(gal_input_test, gal_target_test, reconstructions, redshifts_test)
+
+    # display a 2D plot of redshifting condition in the latent space
+
+    fig, axarr = plt.subplots(figsize=(6, 6))
+    plt.plot(z[:, 0], z[:, 1], 'k.')
+    plt.axis('square')
+    plt.title('Digit Classes in Latent Space')
+    plt.xlabel('z[0]')
+    plt.ylabel('z[1]')
+    plt.savefig('latent_scatter.pdf')
