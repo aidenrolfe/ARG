@@ -33,8 +33,8 @@ def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
     plot_images = {"original": images[plot_idx]}
     images = rebinning(images, nominal_redshift, redshifts)
     plot_images["rebinned"] = images[plot_idx]
-    images = dimming(images, nominal_redshift, redshifts)
-    plot_images["dimming"] = images[plot_idx]   
+    #images = dimming(images, nominal_redshift, redshifts)
+    #plot_images["dimming"] = images[plot_idx]   
     images = convolve_psf(images, seeing)
     plot_images["convolved"] = images[plot_idx]
     images = add_shot_noise(images)
