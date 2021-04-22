@@ -161,7 +161,7 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
     m = target.shape[0]
     r = random.randint(0, m-1) # choosing a random galaxy to plot (as input and target redshift)
     vmax = target[r].max()
-    fig, axarr = plt.subplots(4, c, figsize=(30, 6))
+    fig, axarr = plt.subplots(4, c, figsize=(c*2, 8))
     for i, ax in enumerate(axarr[0]):
         ax.imshow(input[r,:,:,i], cmap='inferno',
                    origin='lower', interpolation='nearest',
@@ -181,11 +181,11 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
         if i==0:
             ax.set_ylabel('reconstruction')  
     for i, ax in enumerate(axarr[3]):
-        ax.imshow(residuals[r,:,:,i], cmap='inferno', 
+        ax.imshow(residuals[r,:,:,i], cmap='coolwarm', 
                   origin='lower', interpolation='nearest',
-                  vmin=0, vmax=vmax)
+                  vmin=-0.1*vmax, vmax=0.1*vmax)
         if i==0:
-            ax.set_ylabel('residual') 
+            ax.set_ylabel('residua (x10)') 
     for ax in axarr.flat:
         ax.set_xticks([])
         ax.set_yticks([])
@@ -218,7 +218,6 @@ if __name__ == "__main__":
         
         reconstructions = vae.predict([gal_input_test, redshifts_test])
         z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
-        residuals = gal_target_test - reconstructions
     else:
         history = vae.fit(gal_input_train, gal_target_train,
                           epochs=epochs,
@@ -230,8 +229,6 @@ if __name__ == "__main__":
         
         reconstructions = vae.predict(gal_input_test)
         z_mean, z_log_var, z = encoder.predict(gal_input_test)
-        residuals = gal_target_test - reconstructions
-    
     
     vae.save_weights(os.path.join(logdir, 'weights')) # save model for future use
     
@@ -246,7 +243,7 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(logdir, 'model_loss.pdf'))
     
     # show what the original, simulated and reconstructed galaxies look like
-    
+    residuals = gal_target_test - reconstructions
     plot_example(gal_input_test, gal_target_test, reconstructions, residuals, redshifts_test,
                  filename=os.path.join(logdir, "examples.pdf"))
     
