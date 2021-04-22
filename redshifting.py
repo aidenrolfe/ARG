@@ -41,7 +41,7 @@ def process(name, scale=None, batchsize=1000):
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
                  dimming=False, plot_idx=0):
-    plot_images = {"original": images[plot_idx]}
+    plot_images = {"original": images[plot_idx].copy()}
     images = rebinning(images, nominal_redshift, redshifts)
     plot_images["rebinned"] = images[plot_idx]
     if dimming:
