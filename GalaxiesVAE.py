@@ -10,15 +10,15 @@ from sklearn.model_selection import train_test_split
 import random
 import argparse
 
-gpus = tf.config.experimental.list_physical_devices("GPU")
+gpus = tf.config.list_physical_devices("GPU")
 if gpus:
     try:
         for gpu in gpus:
             # Turn on memory growth
-            tf.config.experimental.set_memory_growth(gpu, True)
+            tf.config.set_memory_growth(gpu, True)
             # Restrict TensorFlow to only use one of the GPUs
-            tf.config.experimental.set_visible_devices(random.choice(gpus), "GPU")
-            logical_gpus = tf.config.experimental.list_logical_devices("GPU")
+            tf.config.set_visible_devices(random.choice(gpus), "GPU")
+            logical_gpus = tf.config.list_logical_devices("GPU")
             print(f"Using GPUs: {logical_gpus}")
     except RuntimeError as e:
         # Visible devices must be set before GPUs have been initialized
