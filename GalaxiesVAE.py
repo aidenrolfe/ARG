@@ -9,6 +9,7 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split
 import random
 import argparse
+import os
 
 gpus = tf.config.list_physical_devices("GPU")
 if gpus:
