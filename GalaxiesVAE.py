@@ -203,7 +203,7 @@ if __name__ == "__main__":
     epochs = 1000
     batch_size = 128
     
-    logdir = f"./{args.runname}" 
+    logdir = f"./runs/{args.runname}" 
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
     
     if args.conditional:
