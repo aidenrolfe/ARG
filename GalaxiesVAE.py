@@ -17,10 +17,10 @@ if gpus:
         for gpu in gpus:
             # Turn on memory growth
             tf.config.experimental.set_memory_growth(gpu, True)
-            # Restrict TensorFlow to only use one of the GPUs
-            tf.config.set_visible_devices(random.choice(gpus), "GPU")
-            logical_gpus = tf.config.list_logical_devices("GPU")
-            print(f"Using GPUs: {logical_gpus}")
+        # Restrict TensorFlow to only use one of the GPUs
+        tf.config.set_visible_devices(random.choice(gpus), "GPU")
+        logical_gpus = tf.config.list_logical_devices("GPU")
+        print(f"Using GPUs: {logical_gpus}")
     except RuntimeError as e:
         # Visible devices must be set before GPUs have been initialized
         print(e)
