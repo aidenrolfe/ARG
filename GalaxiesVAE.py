@@ -185,7 +185,7 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
                   origin='lower', interpolation='nearest',
                   vmin=-0.1*vmax, vmax=0.1*vmax)
         if i==0:
-            ax.set_ylabel('residua (x10)') 
+            ax.set_ylabel('residual (x10)') 
     for ax in axarr.flat:
         ax.set_xticks([])
         ax.set_yticks([])
