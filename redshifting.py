@@ -45,11 +45,11 @@ def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
 
 def add_noise(images, background=10, plot_idx=0):
     plot_images = {}
-    noisy = add_shot_noise(images)
-    plot_images["shot noise"] = noisy[plot_idx]
-    noisy = add_background(noisy, background)
-    plot_images["background noise"] = noisy[plot_idx]
-    return noisy.astype(np.float32), plot_images
+    images = add_shot_noise(images)
+    plot_images["shot noise"] = images[plot_idx]
+    images = add_background(images, background)
+    plot_images["background noise"] = images[plot_idx]
+    return images.astype(np.float32), plot_images
 
 
 def test_plot(images, filename=None, ncol=5):
