@@ -11,23 +11,32 @@ cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 
 def main():
-    scale = process('inputgalaxies')
-    process('targetgalaxies', scale=scale)
+    scale = process('input')
+    process('target', scale)
 
-    
-def process(name, scale=None):
-    images = np.load(f'{name}.npy')
-    redshifts = np.load(f'{name}.npy').squeeze()  
+
+def process(name, scale=None, batchsize=1000):
+    images = np.load(f'{name}galaxies.npy')
+    redshifts = np.load(f'{name}redshifts.npy').squeeze()
+    # apply a uniform rescaling
     if scale is None:
         scale = 20000 / np.max(images)
     images *= scale
-    images, plot_images = observe_gals(images, redshifts)
-    np.save('{name}_obs_nonoise.npy', images)
-    images, extra_plot_images = add_noise(images)
-    np.save(f'{name}_obs.npy', images)
-    plot_images.update(extra_plot_images)
-    test_plot(plot_images, f'{name}_obs')
-    return scale
+    nsplit = len(images)//batchsize
+    batches = [np.array_split(x, nsplit) for x in (images, redshifts)]
+    plot_images = []
+    for i, (imbatch, zbatch) in enumerate(zip(*batches)):
+        # batch is a "view", so this updates the contents of the images array
+        imbatch[:], pltimg = observe_gals(imbatch, zbatch)
+        plot_images.append(pltimg)
+        print(f'Processed {name} batch {i} of {nsplit}', end='\r')
+    np.save(f'{name}galaxies_obs_nonoise.npy', images)
+    for i, (imbatch, zbatch) in enumerate(zip(*batches)):
+        imbatch[:], pltimg = add_noise(imbatch)
+        plot_images[i].update(pltimg)
+        test_plot(plot_images[i], f'{name}_{i}_obs')
+        print(f'Added noise to batch {i} of {nsplit}', end='\r')
+    np.save(f'{name}galaxies_obs.npy', images)
 
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
@@ -52,7 +61,7 @@ def add_noise(images, background=10, plot_idx=0):
     return images.astype(np.float32), plot_images
 
 
-def test_plot(images, filename=None, ncol=5):
+def test_plot(images, filename='redshifting.pdf', ncol=5):
     t = list(images.keys())[-1]
     c = images[t].shape[-1]
     col_idx = np.linspace(0, c-1, ncol).astype('int')
@@ -75,6 +84,7 @@ def test_plot(images, filename=None, ncol=5):
         plt.savefig(f'{filename}.pdf')
     else:
         plt.show()
+    plt.close(fig)
 
         
 def convolve_psf(images, seeing):
