@@ -233,7 +233,7 @@ if __name__ == "__main__":
         residuals = gal_target_test - reconstructions
     
     
-    vae.save_weights(os.path.join(logdir, f'weights_{logname}')) # save model for future use
+    vae.save_weights(os.path.join(logdir, 'weights')) # save model for future use
     
     # summarize history for loss
     
