@@ -11,38 +11,40 @@ cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 
 def main():
-    input_images = np.load('inputgalaxies.npy')
-    input_redshifts = np.load('inputredshifts.npy').squeeze()  
-    target_images = np.load('targetgalaxies.npy')
-    target_redshifts = np.load('targetredshifts.npy').squeeze()
+    scale = process('inputgalaxies')
+    process('targetgalaxies', scale=scale)
 
-    # apply a uniform rescaling
-    scale = 20000 / np.max(input_images)
-    input_images *= scale
-    target_images *= scale
-
-    input_images = observe_gals(input_images, input_redshifts, filename='input_obs')
-    target_images = observe_gals(target_images, target_redshifts, filename='target_obs')
-
-    np.save('inputgalaxies_obs.npy', input_images)
-    np.save('targetgalaxies_obs.npy', target_images)
+    
+def process(name, scale=None):
+    images = np.load(f'{name}.npy')
+    redshifts = np.load(f'{name}.npy').squeeze()  
+    if scale is None:
+        scale = 20000 / np.max(images)
+    images *= scale
+    obs_images, noisy_images = observe_gals(images, redshifts,
+                              filename=f'{name}_obs')
+    np.save(f'{name}_obs.npy', noisy_images)
+    np.save('inputgalaxies_obs_nonoise.npy', obs_images)
+    return scale
 
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
-                 background=10, plot_idx=0, filename=None):
+                 background=10, dimming=False, plot_idx=0,
+                 filename=None):
     plot_images = {"original": images[plot_idx]}
     images = rebinning(images, nominal_redshift, redshifts)
     plot_images["rebinned"] = images[plot_idx]
-    #images = dimming(images, nominal_redshift, redshifts)
-    #plot_images["dimming"] = images[plot_idx]   
+    if dimming:
+        images = dimming(images, nominal_redshift, redshifts)
+        plot_images["dimming"] = images[plot_idx]   
     images = convolve_psf(images, seeing)
     plot_images["convolved"] = images[plot_idx]
-    images = add_shot_noise(images)
-    plot_images["shot noise"] = images[plot_idx]
-    images = add_background(images, background)
-    plot_images["background noise"] = images[plot_idx]
+    noisy = add_shot_noise(images)
+    plot_images["shot noise"] = noisy[plot_idx]
+    noisy = add_background(noisy, background)
+    plot_images["background noise"] = noisy[plot_idx]
     test_plot(plot_images, filename)
-    return images
+    return images, noisy
 
 
 def test_plot(images, filename=None, ncol=5):

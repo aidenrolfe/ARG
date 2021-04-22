@@ -1,6 +1,7 @@
 import sys
 import h5py
 import numpy as np
+import argparse
 from astropy.modeling.models import Sersic2D
 
 
@@ -103,4 +104,7 @@ def main(n=10000):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", type=int, default=10000)
+    args = parser.parse_args()
+    sys.exit(main(n=args.n))
