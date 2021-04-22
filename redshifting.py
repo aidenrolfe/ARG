@@ -38,10 +38,12 @@ def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
         images = dimming(images, nominal_redshift, redshifts)
         plot_images["dimming"] = images[plot_idx]   
     images = convolve_psf(images, seeing)
+    images = images.astype(np.float32)
     plot_images["convolved"] = images[plot_idx]
     noisy = add_shot_noise(images)
     plot_images["shot noise"] = noisy[plot_idx]
     noisy = add_background(noisy, background)
+    noisy = noisy.astype(np.float32)
     plot_images["background noise"] = noisy[plot_idx]
     test_plot(plot_images, filename)
     return images, noisy
