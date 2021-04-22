@@ -211,7 +211,7 @@ if __name__ == "__main__":
                           epochs=epochs,
                           batch_size=batch_size,
                           shuffle=True,
-                          verbose=1,
+                          verbose=2,
                           validation_data=([gal_input_test, redshifts_test], gal_target_test),
                           callbacks=[tensorboard_callback, early_stopping_callback])
         
@@ -223,7 +223,7 @@ if __name__ == "__main__":
                           epochs=epochs,
                           batch_size=batch_size,
                           shuffle=True,
-                          verbose=1,
+                          verbose=2,
                           validation_data=(gal_input_test, gal_target_test),
                           callbacks=[tensorboard_callback, early_stopping_callback])
         
