@@ -21,16 +21,17 @@ def process(name, scale=None):
     if scale is None:
         scale = 20000 / np.max(images)
     images *= scale
-    obs_images, noisy_images = observe_gals(images, redshifts,
-                              filename=f'{name}_obs')
-    np.save(f'{name}_obs.npy', noisy_images)
-    np.save('inputgalaxies_obs_nonoise.npy', obs_images)
+    images, plot_images = observe_gals(images, redshifts)
+    np.save('{name}_obs_nonoise.npy', images)
+    images, extra_plot_images = add_noise(images)
+    np.save(f'{name}_obs.npy', images)
+    plot_images.update(extra_plot_images)
+    test_plot(plot_images, f'{name}_obs')
     return scale
 
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
-                 background=10, dimming=False, plot_idx=0,
-                 filename=None):
+                 dimming=False, plot_idx=0):
     plot_images = {"original": images[plot_idx]}
     images = rebinning(images, nominal_redshift, redshifts)
     plot_images["rebinned"] = images[plot_idx]
@@ -38,15 +39,17 @@ def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
         images = dimming(images, nominal_redshift, redshifts)
         plot_images["dimming"] = images[plot_idx]   
     images = convolve_psf(images, seeing)
-    images = images.astype(np.float32)
     plot_images["convolved"] = images[plot_idx]
+    return images.astype(np.float32), plot_images
+
+
+def add_noise(images, background=10, plot_idx=0)
+    plot_images = {}
     noisy = add_shot_noise(images)
     plot_images["shot noise"] = noisy[plot_idx]
     noisy = add_background(noisy, background)
-    noisy = noisy.astype(np.float32)
     plot_images["background noise"] = noisy[plot_idx]
-    test_plot(plot_images, filename)
-    return images, noisy
+    return noisy.astype(np.float32), plot_images
 
 
 def test_plot(images, filename=None, ncol=5):
