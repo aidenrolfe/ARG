@@ -8,15 +8,40 @@ from tensorflow.keras.utils import to_categorical
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 import random
+import argparse
+import os
 
-conditional = True
+gpus = tf.config.list_physical_devices("GPU")
+if gpus:
+    try:
+        for gpu in gpus:
+            # Turn on memory growth
+            tf.config.experimental.set_memory_growth(gpu, True)
+        # Restrict TensorFlow to only use one of the GPUs
+        tf.config.set_visible_devices(random.choice(gpus), "GPU")
+        logical_gpus = tf.config.list_logical_devices("GPU")
+        print(f"Using GPUs: {logical_gpus}")
+    except RuntimeError as e:
+        # Visible devices must be set before GPUs have been initialized
+        print(e)
 
-# read in galaxy
+parser = argparse.ArgumentParser()
+parser.add_argument("runname", type=str)
+parser.add_argument("input", type=str, default="inputgalaxies_obs_nonoise")
+parser.add_argument("target", type=str, default="targetgalaxies_obs_nonoise")
+parser.add_argument("--unconditional", dest="conditional", action="store_false")
+args = parser.parse_args()
 
-gal_input = np.load('inputgalaxies_obs.npy') # 'inputgalaxies.npy'
-z_input = np.load('inputredshifts.npy')
-gal_target = np.load('targetgalaxies_obs.npy') # 'targetgalaxies.npy'
-z_target = np.load('targetredshifts.npy')
+# read in galaxy data
+images_file = f"{args.input}.npy"
+redshifts_file = f"{args.input.split('_')[0].replace('galaxies', 'redshifts')}.npy"
+gal_input = np.load(images_file)
+z_input = np.load(redshifts_file)
+
+images_file = f"{args.target}.npy"
+redshifts_file = f"{args.target.split('_')[0].replace('galaxies', 'redshifts')}.npy"
+gal_target = np.load(images_file)
+z_target = np.load(redshifts_file)
 
 redshifts = np.transpose([z_input, z_target]) # combine redshifts into 1 array
 
@@ -64,7 +89,7 @@ latent_dim = 20
 encoder_inputs = keras.Input(shape=(w, h, c))
 condition_inputs = keras.Input(shape=(z_condition,))
 x = layers.Conv2D(64, 3, activation="relu")(encoder_inputs)
-x = layers.Conv2D(64, 1, activation="relu", strides=1, padding="same")(x)
+#x = layers.Conv2D(64, 1, activation="relu", strides=1, padding="same")(x)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2D(64, 3, activation="relu", strides=3, padding="same")(x)
 x = layers.Conv2D(128, 3, activation="relu", strides=3, padding="same")(x)
@@ -74,7 +99,7 @@ x = layers.Conv2D(128, 3, activation="relu", strides=3, padding="same")(x)
 # x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
 
-if conditional:
+if args.conditional:
     x = layers.Concatenate()([x, condition_inputs])
     x = layers.Dense(64, activation="relu")(x)
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
@@ -92,7 +117,7 @@ encoder.summary()
 # build the decoder
 
 latent_inputs = keras.Input(shape=(latent_dim,))
-if conditional:
+if args.conditional:
     x = layers.Concatenate()([latent_inputs, condition_inputs])
     x = layers.Dense(7 * 7 * 64, activation="relu")(x)
 else:
@@ -102,7 +127,7 @@ x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="valid")
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
 decoder_outputs = layers.Conv2DTranspose(c, 3, padding="same")(x)
-if conditional:
+if args.conditional:
     decoder = keras.Model([latent_inputs, condition_inputs], decoder_outputs, name="decoder")
 else:
     decoder = keras.Model(latent_inputs, decoder_outputs, name="decoder")
@@ -119,7 +144,7 @@ beta = 1
 kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
 kl_loss = beta * tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
 
-if conditional:
+if args.conditional:
     vae_outputs = decoder([encoder([encoder_inputs, condition_inputs])[-1],
                            condition_inputs])
     vae = keras.Model([encoder_inputs, condition_inputs], vae_outputs)
@@ -136,7 +161,7 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
     m = target.shape[0]
     r = random.randint(0, m-1) # choosing a random galaxy to plot (as input and target redshift)
     vmax = target[r].max()
-    fig, axarr = plt.subplots(4, c, figsize=(30, 6))
+    fig, axarr = plt.subplots(4, c, figsize=(c*2, 8))
     for i, ax in enumerate(axarr[0]):
         ax.imshow(input[r,:,:,i], cmap='inferno',
                    origin='lower', interpolation='nearest',
@@ -156,11 +181,11 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
         if i==0:
             ax.set_ylabel('reconstruction')  
     for i, ax in enumerate(axarr[3]):
-        ax.imshow(residuals[r,:,:,i], cmap='inferno', 
+        ax.imshow(residuals[r,:,:,i], cmap='coolwarm', 
                   origin='lower', interpolation='nearest',
-                  vmin=0, vmax=vmax)
+                  vmin=-0.1*vmax, vmax=0.1*vmax)
         if i==0:
-            ax.set_ylabel('residual') 
+            ax.set_ylabel('residual (x10)') 
     for ax in axarr.flat:
         ax.set_xticks([])
         ax.set_yticks([])
@@ -179,35 +204,33 @@ if __name__ == "__main__":
     epochs = 1000
     batch_size = 128
     
-    logname = datetime.now().strftime("%Y%m%d-%H%M%S")
-    logdir = f"/tmp/tb/{logname}" 
+    logdir = f"./runs/{args.runname}" 
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
     
-    if conditional:
+    if args.conditional:
         history = vae.fit([gal_input_train, redshifts_train], gal_target_train,
                           epochs=epochs,
                           batch_size=batch_size,
                           shuffle=True,
+                          verbose=2,
                           validation_data=([gal_input_test, redshifts_test], gal_target_test),
                           callbacks=[tensorboard_callback, early_stopping_callback])
         
         reconstructions = vae.predict([gal_input_test, redshifts_test])
         z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
-        residuals = gal_target_test - reconstructions
     else:
         history = vae.fit(gal_input_train, gal_target_train,
                           epochs=epochs,
                           batch_size=batch_size,
                           shuffle=True,
+                          verbose=2,
                           validation_data=(gal_input_test, gal_target_test),
                           callbacks=[tensorboard_callback, early_stopping_callback])
         
         reconstructions = vae.predict(gal_input_test)
         z_mean, z_log_var, z = encoder.predict(gal_input_test)
-        residuals = gal_target_test - reconstructions
     
-    
-    vae.save_weights(f'weights_{logname}') # save model for future use
+    vae.save_weights(os.path.join(logdir, 'weights')) # save model for future use
     
     # summarize history for loss
     
@@ -217,11 +240,12 @@ if __name__ == "__main__":
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['Training', 'Validation'], loc='upper right')
-    plt.savefig('model_loss.pdf')
+    plt.savefig(os.path.join(logdir, 'model_loss.pdf'))
     
     # show what the original, simulated and reconstructed galaxies look like
-    
-    plot_example(gal_input_test, gal_target_test, reconstructions, residuals, redshifts_test)
+    residuals = gal_target_test - reconstructions
+    plot_example(gal_input_test, gal_target_test, reconstructions, residuals, redshifts_test,
+                 filename=os.path.join(logdir, "examples.pdf"))
     
     # display a 2D plot of redshifting condition in the latent space
     
@@ -231,6 +255,6 @@ if __name__ == "__main__":
     plt.title('Redshift Conditions in Latent Space')
     plt.xlabel('z[0]')
     plt.ylabel('z[1]')
-    plt.savefig('latent_scatter.pdf')
+    plt.savefig(os.path.join(logdir, 'latent_scatter.pdf'))
     
     

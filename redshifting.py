@@ -11,41 +11,57 @@ cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 
 def main():
-    input_images = np.load('inputgalaxies.npy')
-    input_redshifts = np.load('inputredshifts.npy').squeeze()  
-    target_images = np.load('targetgalaxies.npy')
-    target_redshifts = np.load('targetredshifts.npy').squeeze()
+    scale = process('input')
+    process('target', scale)
 
+
+def process(name, scale=None, batchsize=1000):
+    images = np.load(f'{name}galaxies.npy')
+    redshifts = np.load(f'{name}redshifts.npy').squeeze()
     # apply a uniform rescaling
-    scale = 20000 / np.max(input_images)
-    input_images *= scale
-    target_images *= scale
-
-    input_images = observe_gals(input_images, input_redshifts, filename='input_obs')
-    target_images = observe_gals(target_images, target_redshifts, filename='target_obs')
-
-    np.save('inputgalaxies_obs.npy', input_images)
-    np.save('targetgalaxies_obs.npy', target_images)
+    if scale is None:
+        scale = 20000 / np.max(images)
+    images *= scale
+    nsplit = len(images)//batchsize
+    batches = [np.array_split(x, nsplit) for x in (images, redshifts)]
+    plot_images = []
+    for i, (imbatch, zbatch) in enumerate(zip(*batches)):
+        # batch is a "view", so this updates the contents of the images array
+        imbatch[:], pltimg = observe_gals(imbatch, zbatch)
+        plot_images.append(pltimg)
+        print(f'Processed {name} batch {i} of {nsplit}', end='\r')
+    np.save(f'{name}galaxies_obs_nonoise.npy', images)
+    for i, (imbatch, zbatch) in enumerate(zip(*batches)):
+        imbatch[:], pltimg = add_noise(imbatch)
+        plot_images[i].update(pltimg)
+        test_plot(plot_images[i], f'{name}_{i}_obs')
+        print(f'Added noise to batch {i} of {nsplit}', end='\r')
+    np.save(f'{name}galaxies_obs.npy', images)
 
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
-                 background=10, plot_idx=0, filename=None):
-    plot_images = {"original": images[plot_idx]}
+                 dimming=False, plot_idx=0):
+    plot_images = {"original": images[plot_idx].copy()}
     images = rebinning(images, nominal_redshift, redshifts)
     plot_images["rebinned"] = images[plot_idx]
-    #images = dimming(images, nominal_redshift, redshifts)
-    #plot_images["dimming"] = images[plot_idx]   
+    if dimming:
+        images = dimming(images, nominal_redshift, redshifts)
+        plot_images["dimming"] = images[plot_idx]   
     images = convolve_psf(images, seeing)
     plot_images["convolved"] = images[plot_idx]
+    return images.astype(np.float32), plot_images
+
+
+def add_noise(images, background=10, plot_idx=0):
+    plot_images = {}
     images = add_shot_noise(images)
     plot_images["shot noise"] = images[plot_idx]
     images = add_background(images, background)
     plot_images["background noise"] = images[plot_idx]
-    test_plot(plot_images, filename)
-    return images
+    return images.astype(np.float32), plot_images
 
 
-def test_plot(images, filename=None, ncol=5):
+def test_plot(images, filename='redshifting.pdf', ncol=5):
     t = list(images.keys())[-1]
     c = images[t].shape[-1]
     col_idx = np.linspace(0, c-1, ncol).astype('int')
@@ -68,6 +84,7 @@ def test_plot(images, filename=None, ncol=5):
         plt.savefig(f'{filename}.pdf')
     else:
         plt.show()
+    plt.close(fig)
 
         
 def convolve_psf(images, seeing):
