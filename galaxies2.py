@@ -83,22 +83,26 @@ def main(n=100):
     gal_seds_in, z_in_idx, gal_seds_out, z_out_idx = input_target(gal_seds)
 
     ## generate sersic galaxies
-    elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
-    PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
-    Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
-    sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
-
-    gal_input1, gal_target1 = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
     
-    elip2 = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
-    PAs2 = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
-    Reff2 = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
-    sersic2 = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
+    ## generates disc shaped galaxies
+    elip_disc = np.round(np.random.uniform(low=0.5, high=0.8, size=(n,)), decimals=2)
+    PAs_disc = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
+    Reff_disc = np.round(np.random.lognormal(2.3, 1.5, size=(n,)), decimals=2)
+    sersic_disc = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
 
-    gal_input2, gal_target2 = combine(gal_seds_in, gal_seds_out, elip2, PAs2, Reff2, sersic2)
+    gal_input_disc, gal_target_disc = combine(gal_seds_in, gal_seds_out, elip_disc, PAs_disc, Reff_disc, sersic_disc)
     
-    gal_input = gal_input1 + gal_input2
-    gal_target = gal_target1 + gal_target2
+    ## generate bulge shaped galaxies
+    elip_bulge = np.round(np.random.uniform(low=0.0, high=0.4, size=(100,)), decimals=2)
+    PAs_bulge = np.round(np.random.uniform(low=0.0, high=np.pi, size=(100,)), decimals=2)
+    Reff_bulge = np.round(np.random.lognormal(1.0, 0.3, size=(100,)), decimals=2)
+    sersic_bulge = np.round(np.random.lognormal(0.5, 0.5, size=(100,)), decimals=2)
+
+    gal_input_bulge, gal_target_bulge = combine(gal_seds_in, gal_seds_out, elip_bulge, PAs_bulge, Reff_bulge, sersic_bulge)
+    
+    ## combines disc and bulge
+    gal_input = gal_input_disc + gal_input_bulge
+    gal_target = gal_target_disc + gal_target_bulge
     
     # reduce the number of filters included to 9
     gal_input = np.delete(gal_input, np.arange(1,17,2), axis = 3)
