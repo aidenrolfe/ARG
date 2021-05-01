@@ -262,10 +262,6 @@ if __name__ == "__main__":
     ##Plotting projection of latent space with TSNE, with reconstructed images instead of points. 
     ##Code adapted from https://github.com/despoisj/LatentSpaceVisualization 
     
-    reconstructions = vae.predict([gal_input_test, redshifts_test])
-    z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
-    
-
     # Scatter with images instead of points
     def imscatter(x, y, ax, imageData, zoom, vae):
         """
