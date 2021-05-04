@@ -236,6 +236,8 @@ def computeTSNEProjectionOfLatentSpace(x_test, z_test, encoder, vae, save=True):
         print("Plotting t-SNE visualization...")
         fig, ax = plt.subplots()
         imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=[x_test, z_test], ax=ax, zoom=0.3, vae = vae)
+        plt.xlabel('z mean [0]')
+        plt.ylabel('z mean [1]')
         plt.savefig('TSNE_scatter.png')
     else:
         return X_tsne
