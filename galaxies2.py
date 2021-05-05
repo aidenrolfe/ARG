@@ -64,7 +64,7 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
     return gal_input, gal_target
 
 
-def main(n=100):
+def main(n=10000):
     ## HDF file produced by running candels_example.py
     filename = "candels.goodss.models.test.hdf"
     f = h5py.File(filename,'r')
