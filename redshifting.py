@@ -15,7 +15,8 @@ def main():
     process('target', scale)
 
 
-def process(name, scale=None, batchsize=1000):
+def process(name, scale=None, batchsize=1000, seeing=3.5,
+            nominal_redshift=0.1, dimming=False, plot_idx=0):
     images = np.load(f'{name}galaxies.npy')
     redshifts = np.load(f'{name}redshifts.npy').squeeze()
     # apply a uniform rescaling
@@ -27,29 +28,26 @@ def process(name, scale=None, batchsize=1000):
     plot_images = []
     for i, (imbatch, zbatch) in enumerate(zip(*batches)):
         # batch is a "view", so this updates the contents of the images array
-        imbatch[:], pltimg = observe_gals(imbatch, zbatch)
+        pltimg = {"original": imbatch[plot_idx].copy()}
+        imbatch[:] = rebinning(imbatch, nominal_redshift, zbatch)
+        pltimg["rebinned"] = imbatch[plot_idx]
+        if dimming:
+            imbatch[:] = dimming(imbatch, nominal_redshift, zbatch)
+            pltimg["dimming"] = imbatch[plot_idx]   
+        print(f'\rRebinned (and dimmed) {name} batch {i} of {nsplit}', end='')
+    np.save(f'{name}galaxies_obs_noconv.npy', images)
+    for i, (imbatch, zbatch) in enumerate(zip(*batches)):
+        imbatch[:] = convolve_psf(imbatch, seeing)
+        pltimg["convolved"] = imbatch[plot_idx]
         plot_images.append(pltimg)
-        print(f'Processed {name} batch {i} of {nsplit}', end='\r')
+        print(f'\rConvolved {name} batch {i} of {nsplit}', end='')
     np.save(f'{name}galaxies_obs_nonoise.npy', images)
     for i, (imbatch, zbatch) in enumerate(zip(*batches)):
         imbatch[:], pltimg = add_noise(imbatch)
         plot_images[i].update(pltimg)
         test_plot(plot_images[i], f'{name}_{i}_obs')
-        print(f'Added noise to batch {i} of {nsplit}', end='\r')
+        print(f'\rAdded noise to {name} batch {i} of {nsplit}', end='')
     np.save(f'{name}galaxies_obs.npy', images)
-
-
-def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
-                 dimming=False, plot_idx=0):
-    plot_images = {"original": images[plot_idx].copy()}
-    images = rebinning(images, nominal_redshift, redshifts)
-    plot_images["rebinned"] = images[plot_idx]
-    if dimming:
-        images = dimming(images, nominal_redshift, redshifts)
-        plot_images["dimming"] = images[plot_idx]   
-    images = convolve_psf(images, seeing)
-    plot_images["convolved"] = images[plot_idx]
-    return images.astype(np.float32), plot_images
 
 
 def add_noise(images, background=10, plot_idx=0):
