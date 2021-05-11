@@ -65,7 +65,7 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
 
 
 def create_simple_galaxies(gal_seds_in, gal_seds_out):
-    n = len(gal_seds_in)
+    n = gal_seds_in.shape[2]
     elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
     PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
     Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
@@ -77,7 +77,7 @@ def create_simple_galaxies(gal_seds_in, gal_seds_out):
 
 
 def create_complex_galaxies(gal_seds_in, gal_seds_out):
-    n = len(gal_seds_in)
+    n = gal_seds_in.shape[2]
     elip_disc = np.round(np.random.uniform(low=0.5, high=0.8, size=(n,)), decimals=2)
     PAs_disc = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
     Reff_disc = np.round(np.random.lognormal(2.3, 1.5, size=(n,)), decimals=2)
