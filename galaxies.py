@@ -64,6 +64,42 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
     return gal_input, gal_target
 
 
+def create_simple_galaxies(gal_seds_in, gal_seds_out):
+    n = len(gal_seds_in)
+    elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
+    PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
+    Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
+    sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
+
+    gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
+    
+    return gal_input, gal_target
+
+
+def create_complex_galaxies(gal_seds_in, gal_seds_out):
+    n = len(gal_seds_in)
+    elip_disc = np.round(np.random.uniform(low=0.5, high=0.8, size=(n,)), decimals=2)
+    PAs_disc = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
+    Reff_disc = np.round(np.random.lognormal(2.3, 1.5, size=(n,)), decimals=2)
+    sersic_disc = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
+
+    gal_input_disc, gal_target_disc = combine(gal_seds_in, gal_seds_out, elip_disc, PAs_disc, Reff_disc, sersic_disc)
+    
+    ## generate bulge shaped galaxies
+    elip_bulge = np.round(np.random.uniform(low=0.0, high=0.4, size=(100,)), decimals=2)
+    PAs_bulge = np.round(np.random.uniform(low=0.0, high=np.pi, size=(100,)), decimals=2)
+    Reff_bulge = np.round(np.random.lognormal(1.0, 0.3, size=(100,)), decimals=2)
+    sersic_bulge = np.round(np.random.lognormal(0.5, 0.5, size=(100,)), decimals=2)
+
+    gal_input_bulge, gal_target_bulge = combine(gal_seds_in, gal_seds_out, elip_bulge, PAs_bulge, Reff_bulge, sersic_bulge)
+    
+    ## combines disc and bulge
+    gal_input = gal_input_disc + gal_input_bulge
+    gal_target = gal_target_disc + gal_target_bulge
+
+    return gal_input, gal_target
+
+
 def main(n=10000):
     ## HDF file produced by running candels_example.py
     filename = "candels.goodss.models.test.hdf"
@@ -83,16 +119,18 @@ def main(n=10000):
     gal_seds_in, z_in_idx, gal_seds_out, z_out_idx = input_target(gal_seds)
 
     ## generate sersic galaxies
-    elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
-    PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
-    Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
-    sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
-
-    gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
+    gal_input, gal_target = create_simple_galaxies(gal_seds_in, gal_seds_out)
     
     # reduce the number of filters included to 9
     gal_input = np.delete(gal_input, np.arange(1,17,2), axis = 3)
     gal_target = np.delete(gal_target, np.arange(1,17,2), axis = 3)
+
+    ## generates disc shaped galaxies
+    gal_bd_input, gal_bd_target = create_complex_galaxies(gal_seds_in, gal_seds_out)
+    
+    # reduce the number of filters included to 9
+    gal_bd_input = np.delete(gal_bd_input, np.arange(1,17,2), axis = 3)
+    gal_bd_target = np.delete(gal_bd_target, np.arange(1,17,2), axis = 3)
 
     # making input and target redshift arrays
     z_in = z[z_in_idx].astype(np.float32)
@@ -100,11 +138,13 @@ def main(n=10000):
     
     ## saving input and target galaxies to npy files
     np.save('inputgalaxies.npy', gal_input)
+    np.save('inputbdgalaxies.npy', gal_input)
     np.save('inputredshifts.npy', z_in)
     np.save('targetgalaxies.npy', gal_target)
+    np.save('targetbdgalaxies.npy', gal_target)
     np.save('targetredshifts.npy', z_out)
 
-
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", type=int, default=10000)
