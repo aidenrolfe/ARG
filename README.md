@@ -10,6 +10,12 @@ Artificially Redshifting Galaxies with Neural Networks - Year 4 Project
 - Astropy
 - H5PY
 - Six
+- Matplotlib
+- Scikit-learn
+
+### Install latest tensorflow with pip:
+
+`pip install tensorflow`
 
 ### Clone and install SMPY --> https://github.com/dunkenj/smpy
 
