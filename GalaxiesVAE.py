@@ -49,9 +49,9 @@ redshifts = np.transpose([z_input, z_target]) # combine redshifts into 1 array
 
 # shuffle and then split galaxy and redshift data into test and train sets
 gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_train, redshifts_test \
-    = train_test_split(gal_input, gal_target, redshifts, test_size=0.2, shuffle=True)
+    = train_test_split(gal_input, gal_target, redshifts, test_size=0.2, shuffle=True, random_state=0)
     
-# normalize each exampld
+# normalize each example
 def norm(x):
     r = x.reshape((x.shape[0], -1))
     scale = r.std(axis=-1)
