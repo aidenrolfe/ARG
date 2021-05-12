@@ -19,8 +19,11 @@ def main():
 
 def process(name, scale=None, batchsize=1000, seeing=3.5,
             nominal_redshift=0.1, dimming=False, plot_idx=0):
-    images = np.load(f'{name}galaxies.npy')
-    redshifts = np.load(f'{name}redshifts.npy').squeeze()
+    images_file = f'{name}galaxies.npy'
+    redshifts_file = images_file.replace('bdgalaxies', 'redshifts')
+    redshifts_file = redshifts_file.replace('galaxies', 'redshifts')
+    images = np.load(images_file)
+    redshifts = np.load(redshifts_file).squeeze()
     # apply a uniform rescaling
     if scale is None:
         scale = 20000 / np.max(images)
