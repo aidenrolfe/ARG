@@ -65,7 +65,7 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
 
 
 def create_simple_galaxies(gal_seds_in, gal_seds_out):
-    n = gal_seds_in.shape[2]
+    n = len(gal_seds_in)
     elip = np.round(np.random.uniform(low=0.0, high=0.8, size=(n,)), decimals=2)
     PAs = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
     Reff = np.round(np.random.lognormal(2.3, 0.3, size=(n,)), decimals=2)
@@ -77,7 +77,7 @@ def create_simple_galaxies(gal_seds_in, gal_seds_out):
 
 
 def create_complex_galaxies(gal_seds_in, gal_seds_out):
-    n = gal_seds_in.shape[2]
+    n = len(gal_seds_in)
     elip_disc = np.round(np.random.uniform(low=0.5, high=0.8, size=(n,)), decimals=2)
     PAs_disc = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
     Reff_disc = np.round(np.random.lognormal(2.3, 1.5, size=(n,)), decimals=2)
@@ -86,10 +86,10 @@ def create_complex_galaxies(gal_seds_in, gal_seds_out):
     gal_input_disc, gal_target_disc = combine(gal_seds_in, gal_seds_out, elip_disc, PAs_disc, Reff_disc, sersic_disc)
     
     ## generate bulge shaped galaxies
-    elip_bulge = np.round(np.random.uniform(low=0.0, high=0.4, size=(100,)), decimals=2)
-    PAs_bulge = np.round(np.random.uniform(low=0.0, high=np.pi, size=(100,)), decimals=2)
-    Reff_bulge = np.round(np.random.lognormal(1.0, 0.3, size=(100,)), decimals=2)
-    sersic_bulge = np.round(np.random.lognormal(0.5, 0.5, size=(100,)), decimals=2)
+    elip_bulge = np.round(np.random.uniform(low=0.0, high=0.4, size=(n,)), decimals=2)
+    PAs_bulge = np.round(np.random.uniform(low=0.0, high=np.pi, size=(n,)), decimals=2)
+    Reff_bulge = np.round(np.random.lognormal(1.0, 0.3, size=(n,)), decimals=2)
+    sersic_bulge = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
 
     gal_input_bulge, gal_target_bulge = combine(gal_seds_in, gal_seds_out, elip_bulge, PAs_bulge, Reff_bulge, sersic_bulge)
     
