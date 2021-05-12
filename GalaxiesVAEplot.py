@@ -13,6 +13,7 @@ else:
 
 residuals = gal_target_test - reconstructions
 
+random.seed(0)
 for i in range(10):
     plot_example(gal_input_test, gal_target_test, reconstructions, residuals, redshifts_test,
                  filename=os.path.join(logdir, f'example_{i}.pdf'))
