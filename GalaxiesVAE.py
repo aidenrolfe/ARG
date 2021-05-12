@@ -36,12 +36,14 @@ args = parser.parse_args()
 
 # read in galaxy data
 images_file = f"{args.input}.npy"
-redshifts_file = f"{args.input.split('_')[0].replace('galaxies', 'redshifts')}.npy"
+redshifts_file = f"{args.input.split('_')[0].replace('galaxiesbd', 'redshifts')}.npy"
+redshifts_file = redshifts_file.replace('galaxies', 'redshifts')
 gal_input = np.load(images_file)
 z_input = np.load(redshifts_file)
 
 images_file = f"{args.target}.npy"
-redshifts_file = f"{args.target.split('_')[0].replace('galaxies', 'redshifts')}.npy"
+redshifts_file = f"{args.target.split('_')[0].replace('galaxiesbd', 'redshifts')}.npy"
+redshifts_file = redshifts_file.replace('galaxies', 'redshifts')
 gal_target = np.load(images_file)
 z_target = np.load(redshifts_file)
 
