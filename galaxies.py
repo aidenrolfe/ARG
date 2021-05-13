@@ -1,6 +1,7 @@
 import sys
 import h5py
 import numpy as np
+import argparse
 from astropy.modeling.models import Sersic2D
 
 
@@ -25,7 +26,7 @@ def input_target(gal_seds, z_idx=None):
     n = gal_seds.shape[2]
     if z_idx is None:
         max_z_idx = gal_seds.shape[0]
-        z_in_idx = np.random.randint(max_z_idx - 1, size=n)
+        z_in_idx = np.random.randint(1, max_z_idx - 1, size=n)
         z_out_idx = np.random.randint(z_in_idx + 1, max_z_idx, size=n)
     else:
         # use provided input and target redshift indices
@@ -58,10 +59,12 @@ def combine(gal_seds_in, gal_seds_out, el, pa, re, sersic):
     gal_seds_out = gal_seds_out[:,None,None]
     gal_input = gal_images * gal_seds_in
     gal_target = gal_images * gal_seds_out
+    gal_input = gal_input.astype(np.float32)
+    gal_target = gal_target.astype(np.float32)
     return gal_input, gal_target
 
 
-def main(n=100):
+def main(n=10000):
     ## HDF file produced by running candels_example.py
     filename = "candels.goodss.models.test.hdf"
     f = h5py.File(filename,'r')
@@ -86,10 +89,14 @@ def main(n=100):
     sersic = np.round(np.random.lognormal(0.5, 0.5, size=(n,)), decimals=2)
 
     gal_input, gal_target = combine(gal_seds_in, gal_seds_out, elip, PAs, Reff, sersic)
+    
+    # reduce the number of filters included to 9
+    gal_input = np.delete(gal_input, np.arange(1,17,2), axis = 3)
+    gal_target = np.delete(gal_target, np.arange(1,17,2), axis = 3)
 
     # making input and target redshift arrays
-    z_in = z[z_in_idx]
-    z_out = z[z_out_idx]
+    z_in = z[z_in_idx].astype(np.float32)
+    z_out = z[z_out_idx].astype(np.float32)
     
     ## saving input and target galaxies to npy files
     np.save('inputgalaxies.npy', gal_input)
@@ -99,4 +106,7 @@ def main(n=100):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", type=int, default=10000)
+    args = parser.parse_args()
+    sys.exit(main(n=args.n))
