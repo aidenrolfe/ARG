@@ -47,18 +47,18 @@ def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
     if dimming:
         images = dimming(images, nominal_redshift, redshifts)
         plot_images["dimming"] = images[plot_idx]   
-    images = convolve_psf(images, seeing)
-    plot_images["convolved"] = images[plot_idx]
+    #images = convolve_psf(images, seeing)
+    #plot_images["convolved"] = images[plot_idx]
     return images.astype(np.float32), plot_images
 
 
-def add_noise(images, background=10, plot_idx=0):
-    plot_images = {}
-    images = add_shot_noise(images)
-    plot_images["shot noise"] = images[plot_idx]
-    images = add_background(images, background)
-    plot_images["background noise"] = images[plot_idx]
-    return images.astype(np.float32), plot_images
+#def add_noise(images, background=10, plot_idx=0):
+    #plot_images = {}
+    #images = add_shot_noise(images)
+    #plot_images["shot noise"] = images[plot_idx]
+    #images = add_background(images, background)
+    #plot_images["background noise"] = images[plot_idx]
+    #return images.astype(np.float32), plot_images
 
 
 def test_plot(images, filename='redshifting.pdf', ncol=5):
@@ -87,15 +87,15 @@ def test_plot(images, filename='redshifting.pdf', ncol=5):
     plt.close(fig)
 
         
-def convolve_psf(images, seeing):
+#def convolve_psf(images, seeing):
     # We can apply convolution to all the images simultaneously
     # if the seeing is the same across all images
     # See tests at https://gist.github.com/19e446a494fbe5b5ad4c4384c23a55a9
-    stdev = seeing / 2.354
-    psf = conv.Gaussian2DKernel(stdev)
-    psf = psf.array[None, ..., None]
-    images = convolve(images, psf, mode='constant')
-    return images
+    #stdev = seeing / 2.354
+    #psf = conv.Gaussian2DKernel(stdev)
+    #psf = psf.array[None, ..., None]
+    #images = convolve(images, psf, mode='constant')
+    #return images
 
 
 #def dimming(images, input_redshifts, output_redshifts):
@@ -133,21 +133,21 @@ def zoom_contents(image, scale, image_axes=[0, 1], method='linear', conserve_flu
     return output
     
     
-def add_shot_noise(images):    
-    images = np.random.poisson(images)
-    return images
+#def add_shot_noise(images):    
+    #images = np.random.poisson(images)
+    #return images
 
 
-def add_background(images, backgrounds):
+#def add_background(images, backgrounds):
     # Adding background noise (from numerous sources - i.e. the sky,
     # electrons in detector which are appearing randomly from thermal
     # noise). Value needs to be tested to find a suitable value to
     # determine the amount of background noise added to be realistic
     # The backgrounds can be a constant, or an array giving a different
     # value for each channel.
-    noise = np.random.normal(0.0, 1.0, size=images.shape)
-    images = images + backgrounds * noise
-    return images
+    #noise = np.random.normal(0.0, 1.0, size=images.shape)
+    #images = images + backgrounds * noise
+    #return images
 
 
 if __name__ == "__main__":
