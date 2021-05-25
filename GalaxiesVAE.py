@@ -3,10 +3,12 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
 from datetime import datetime
 from sklearn.model_selection import train_test_split
+from sklearn import manifold
 import random
 import argparse
 import os
@@ -49,7 +51,7 @@ redshifts = np.transpose([z_input, z_target]) # combine redshifts into 1 array
 gal_input_train, gal_input_test, gal_target_train, gal_target_test, redshifts_train, redshifts_test \
     = train_test_split(gal_input, gal_target, redshifts, test_size=0.2, shuffle=True)
     
-# normalize each example, could reapply these at end
+# normalize each exampld
 def norm(x):
     r = x.reshape((x.shape[0], -1))
     scale = r.std(axis=-1)
@@ -61,9 +63,6 @@ gal_input_train_scale, gal_input_train = norm(gal_input_train)
 gal_input_test_scale, gal_input_test = norm(gal_input_test)
 gal_target_train_scale, gal_target_train = norm(gal_target_train)
 gal_target_test_scale, gal_target_test = norm(gal_target_test)
-
- # Could perhaps add input scale to the condition to help get noise right (of that's what we want)
- # We won't have the target scale during inference, so should train network to output it?
 
 n_input_train, w, h, c = gal_input_train.shape
 n_input_test, _, _, _ = gal_input_test.shape
@@ -88,15 +87,11 @@ latent_dim = 20
 
 encoder_inputs = keras.Input(shape=(w, h, c))
 condition_inputs = keras.Input(shape=(z_condition,))
-x = layers.Conv2D(64, 3, activation="relu")(encoder_inputs)
-#x = layers.Conv2D(64, 1, activation="relu", strides=1, padding="same")(x)
+x = layers.GaussianNoise(stddev=0.2)(encoder_inputs)
+x = layers.Conv2D(64, 3, activation="relu")(x)
 x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Conv2D(64, 3, activation="relu", strides=3, padding="same")(x)
 x = layers.Conv2D(128, 3, activation="relu", strides=3, padding="same")(x)
-# x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(encoder_inputs)
-# x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-# x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-# x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
 x = layers.Flatten()(x)
 
 if args.conditional:
@@ -161,7 +156,7 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
     m = target.shape[0]
     r = random.randint(0, m-1) # choosing a random galaxy to plot (as input and target redshift)
     vmax = target[r].max()
-    fig, axarr = plt.subplots(4, c, figsize=(c*2, 8))
+    fig, axarr = plt.subplots(5, c, figsize=(c*2, 8))
     for i, ax in enumerate(axarr[0]):
         ax.imshow(input[r,:,:,i], cmap='inferno',
                    origin='lower', interpolation='nearest',
@@ -186,20 +181,74 @@ def plot_example(input, target, reconstructions, residuals, redshifts, filename=
                   vmin=-0.1*vmax, vmax=0.1*vmax)
         if i==0:
             ax.set_ylabel('residual (x10)') 
+    for i, ax in enumerate(axarr[4]):
+        ax_target = plt.subplot(5, 1, 5)
+        ax_target.plot(np.arange(c), target[r].sum(axis=(0, 1)), 'bo-', label='target')
+        ax_target.set_xlabel('filter number')
+        ax_target.set_ylabel('target flux', color = 'b')
+        ax_target.tick_params(axis='y', labelcolor='b') 
+        ax_target.set_xlim(-0.5, c-0.5)
+        ax_recon = ax_target.twinx()       
+        ax_recon.plot(np.arange(c), reconstructions[r].sum(axis=(0, 1)), 'ro-', label='reconstructions')
+        ax_recon.set_ylabel('reconstruction flux', color = 'r')
+        ax_recon.tick_params(axis='y', labelcolor='r')
     for ax in axarr.flat:
         ax.set_xticks([])
         ax.set_yticks([])
     plt.suptitle('Galaxy image ' + str(r) + ' with input z = ' + str(np.round(redshifts[r,0],2)) \
                  + ' and target z = ' + str(np.round(redshifts[r,1],2)))
     plt.savefig(filename)
+    
+# Plotting projection of latent space with TSNE, with reconstructed images instead of points.      
+
+# Scatter with images instead of points
+def imscatter(x, y, ax, imageData, zoom, vae):
+    """
+    Inputs:
+        x, y : TSNE points 
+        imageData: Your images for testing 
+    """
+    images = []
+    reconstructed_imgs = vae.predict(imageData)
+    for i in range(len(x)):
+        x0, y0 = x[i], y[i]
+        # Convert to image
+        for j in range(c):
+            img = reconstructed_imgs[i,:,:,j]
+            image = OffsetImage(img, zoom=zoom)
+            ab = AnnotationBbox(image, (x0, y0), xycoords='data', frameon=False)
+            images.append(ax.add_artist(ab))
+    ax.update_datalim(np.column_stack([x, y]))
+    ax.autoscale()
+
+# Show dataset images with T-sne projection of latent space encoding
+def computeTSNEProjectionOfLatentSpace(x_test, z_test, encoder, vae, save=True):
+    # Compute latent space representation
+    print("Computing latent space projection...")
+    z_mean, z_log_var, z = encoder.predict([gal_input_test, redshifts_test])
+    # Compute t-SNE embedding of latent space
+    print("Computing t-SNE embedding...")
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    X_tsne = tsne.fit_transform(z_mean) 
+
+    # Plot images according to t-sne embedding
+    if save:
+        print("Plotting t-SNE visualization...")
+        fig, ax = plt.subplots()
+        imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=[x_test, z_test], ax=ax, zoom=0.3, vae = vae)
+        plt.xlabel('z mean [0]')
+        plt.ylabel('z mean [1]')
+        plt.savefig('TSNE_scatter.png')
+    else:
+        return X_tsne
 
 if __name__ == "__main__":
 
     # train the VAE
     
     # This callback will stop the training when there is no improvement in
-    # the validation loss for 15 consecutive epochs
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
+    # the validation loss for 25 consecutive epochs
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25)
     
     epochs = 1000
     batch_size = 128
@@ -249,12 +298,15 @@ if __name__ == "__main__":
     
     # display a 2D plot of redshifting condition in the latent space
     
-    fig, axarr = plt.subplots(figsize=(6, 6))
-    plt.plot(z[:, 0], z[:, 1], 'k.')
-    plt.axis('square')
-    plt.title('Redshift Conditions in Latent Space')
-    plt.xlabel('z[0]')
-    plt.ylabel('z[1]')
-    plt.savefig(os.path.join(logdir, 'latent_scatter.pdf'))
+    # fig, axarr = plt.subplots(figsize=(6, 6))
+    # plt.plot(z[:, 0], z[:, 1], 'k.')
+    # plt.axis('square')
+    # plt.title('Redshift Conditions in Latent Space')
+    # plt.xlabel('z[0]')
+    # plt.ylabel('z[1]')
+    # plt.savefig(os.path.join(logdir, 'latent_scatter.pdf'))
+          
+
+    # display multi-dimensional latent plot
     
-    
+    computeTSNEProjectionOfLatentSpace(gal_input_test,redshifts_test,encoder,vae,save =True)
