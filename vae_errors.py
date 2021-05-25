@@ -1,4 +1,4 @@
-from vae_complex import *
+from GalaxiesVAE import *
 import matplotlib.patches as patches
 
 
