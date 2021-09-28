@@ -11,7 +11,7 @@ cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 
 def main():
-    # hi JJ, Adam
+    # well done for setting up git
     scale = process('input')
     process('target', scale)
 
