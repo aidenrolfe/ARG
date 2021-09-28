@@ -7,13 +7,12 @@ from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 from matplotlib import pyplot as plt
 
-cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
 
 def main():
     # well done for setting up git
-    scale = process('input')
-    process('target', scale)
+    process('input')
+    process('target')
 
 
 def process(name, scale=None, batchsize=1000):
@@ -152,4 +151,7 @@ def add_background(images, backgrounds):
 
 
 if __name__ == "__main__":
+
+    cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
+
     sys.exit(main())
