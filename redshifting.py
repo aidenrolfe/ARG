@@ -37,6 +37,7 @@ def process(name, scale=None, batchsize=1000):
         test_plot(plot_images[i], f'{name}_{i}_obs')
         print(f'Added noise to batch {i} of {nsplit}', end='\r')
     np.save(f'{name}galaxies_obs.npy', images)
+    return scale
 
 
 def observe_gals(images, redshifts, seeing=3.5, nominal_redshift=0.1,
